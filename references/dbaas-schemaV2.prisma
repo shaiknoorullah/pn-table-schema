@@ -269,36 +269,36 @@ model Department {
  * ************************************
  */
 
-model DB_Cross_Ref_Map {
-}
+// model DB_Cross_Ref_Map {
+// }
 
-model DB_Reference {
-    id          String  @id @default(uuid())
-    name        String
-    type        DB_TYPE
-    code        String
-    description String
-}
+// model DB_Reference {
+//     id          String  @id @default(uuid())
+//     name        String
+//     type        DB_TYPE
+//     code        String
+//     description String
+// }
 
-model DB_Connection {
-    id                String  @id @default(uuid())
-    connection_string String
-    secure            Boolean @default(false)
-    environment       DB_ENV  @default(DEV)
-}
+// model DB_Connection {
+//     id                String  @id @default(uuid())
+//     connection_string String
+//     secure            Boolean @default(false)
+//     environment       DB_ENV  @default(DEV)
+// }
 
-enum DB_ENV {
-    DEV
-    STAGING
-    PROD
-}
+// enum DB_ENV {
+//     DEV
+//     STAGING
+//     PROD
+// }
 
-enum DB_TYPE {
-    NO_SQL
-    SQL
-    TIMESERIES
-    OBJ_STORAGE
-}
+// enum DB_TYPE {
+//     NO_SQL
+//     SQL
+//     TIMESERIES
+//     OBJ_STORAGE
+// }
 
 /**
  * *************************************
