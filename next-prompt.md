@@ -1,0 +1,7 @@
+and then update the workflow diagram. but this time divide the diagram into three different parts. focusing on different angles of our implementation and solution. 
+
+Tenant Isolation ( goal is to show how tenant isolation will work, help to decrease load, allow better consistency while also increase availability ) focusing more on the components that allow this: kafka, redis and other tools if you recommend
+
+Distributed Workload (goal is to show how after tenant isolation, distributing the workloads into Workers, Jobs, and Queues and enabling Horizontal scaling would help) focused more on the components that allow this. Redis, Kafka, BullMQ, Compute Nodes and other tools if you recommend
+
+Centralised  Transaction Management per tenant (goal is to show how our system will become eventually consistent, but allow faster read/write operations while maintaining cluster isolation to provide consistent data. with limited trade off on availability and also, efficiently manage transactions based on rules not queue lengths (referring to the problem where we might read before writing when write was requested before read but read request executed first because read queue had less jobs pending than the write queue or the pending read Jobs didn't take much time to finish and the read job was executed.)). focused more on the components that allow this. Redis, Kafka, BullMQ, Jobs, Queues and Workers and other tools if you recommend

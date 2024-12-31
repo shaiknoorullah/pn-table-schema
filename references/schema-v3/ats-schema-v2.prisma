@@ -1,0 +1,537 @@
+// This schema defines a comprehensive SaaS platform with support for
+// multi-tenancy, dynamic pricing, feature management, and integration with Stripe
+
+// generator client {
+//     provider = "prisma-client-js"
+// }
+
+// datasource db {
+//     provider = "postgresql"
+//     url      = env("DATABASE_URL")
+// }
+
+// ==================== Core User Management ====================
+
+// model User {
+//     id              String              @id @default(cuid())
+//     email           String              @unique
+//     name            String?
+//     role            UserRole            @default(USER)
+//     status          UserStatus          @default(ACTIVE)
+//     createdAt       DateTime            @default(now())
+//     updatedAt       DateTime            @updatedAt
+//     lastLoginAt     DateTime?
+//     // Relationships
+//     auditLogs       AuditLog[]
+//     createdPolicies RestrictionPolicy[] @relation("PolicyCreator")
+//     notifications   Notification[]
+//     salesActivities SalesActivity[]     @relation("SalesRepActivities")
+// }
+
+// enum UserRole {
+//     SUPER_ADMIN
+//     SALES_REP
+//     ENGINEER
+//     ACCOUNTS
+//     MARKETING
+//     USER
+// }
+
+// enum UserStatus {
+//     ACTIVE
+//     INACTIVE
+//     SUSPENDED
+// }
+
+// ==================== Tenant Management ====================
+
+// model Tenant {
+//     id             String                @id @default(cuid())
+//     name           String
+//     domain         String?               @unique
+//     status         TenantStatus          @default(ACTIVE)
+//     createdAt      DateTime              @default(now())
+//     updatedAt      DateTime              @updatedAt
+//     // Relationships
+//     // users          TenantUser[]
+//     subscriptions  TenantSubscription[]
+//     configurations TenantConfiguration[]
+//     usageMetrics   UsageMetric[]
+//     apiKeys        ApiKey[]
+//     timezone       String // add to user as well.
+// }
+
+// enum TenantStatus {
+//     ACTIVE
+//     INACTIVE
+//     SUSPENDED
+//     TRIAL
+// }
+
+// ==================== Product & Feature Management ====================
+
+// model Module {
+//     id           String        @id @default(cuid())
+//     name         String        @unique
+//     description  String
+//     status       ModuleStatus  @default(ACTIVE)
+//     createdAt    DateTime      @default(now())
+//     updatedAt    DateTime      @updatedAt
+//     // Relationships
+//     features     Feature[]
+//     planModules  PlanModule[]
+//     usageMetrics UsageMetric[]
+// }
+
+// model FeatureCategory {
+//     id           String    @id @default(cuid())
+//     name         String    @unique // e.g., "Fundamentals", "Visualizations", "Project Management"
+//     displayOrder Int
+//     description  String?
+//     createdAt    DateTime  @default(now())
+//     updatedAt    DateTime  @updatedAt
+//     // Relationships
+//     features     Feature[]
+// }
+
+// model Feature {
+//     id           String          @id @default(cuid())
+//     moduleId     String
+//     categoryId   String
+//     name         String
+//     displayName  String
+//     description  String
+//     type         FeatureType
+//     defaultValue String? // JSON string for default limits/settings
+//     isNew        Boolean         @default(false)
+//     status       FeatureStatus   @default(ACTIVE)
+//     displayOrder Int
+//     createdAt    DateTime        @default(now())
+//     updatedAt    DateTime        @updatedAt
+//     // Relationships
+//     module       Module          @relation(fields: [moduleId], references: [id])
+//     category     FeatureCategory @relation(fields: [categoryId], references: [id])
+//     planFeatures PlanFeature[]
+//     usageMetrics UsageMetric[]
+// }
+
+// enum ModuleStatus {
+//     ACTIVE
+//     INACTIVE
+//     DEPRECATED
+// }
+
+// enum FeatureStatus {
+//     ACTIVE
+//     INACTIVE
+//     DEPRECATED
+//     BETA
+// }
+
+// enum FeatureType {
+//     BOOLEAN
+//     NUMERIC
+//     TIERED
+//     METERED
+// }
+
+// ==================== Pricing & Plans ====================
+
+// model PricingPlan {
+//     id              String               @id @default(cuid())
+//     name            String
+//     description     String
+//     status          PlanStatus           @default(ACTIVE)
+//     visibility      PlanVisibility       @default(PUBLIC)
+//     interval        BillingInterval
+//     price           Decimal
+//     currency        String               @default("USD")
+//     trialDays       Int                  @default(0)
+//     sortOrder       Int                  @default(0)
+//     createdAt       DateTime             @default(now())
+//     updatedAt       DateTime             @updatedAt
+//     // Relationships
+//     planModules     PlanModule[]
+//     planFeatures    PlanFeature[]
+//     subscriptions   TenantSubscription[]
+//     stripeProductId String?              @unique
+//     stripePriceId   String?              @unique
+// }
+
+// model PlanModule {
+//     id       String      @id @default(cuid())
+//     planId   String
+//     moduleId String
+//     // Relationships
+//     plan     PricingPlan @relation(fields: [planId], references: [id])
+//     module   Module      @relation(fields: [moduleId], references: [id])
+
+//     @@unique([planId, moduleId])
+// }
+
+// model PlanFeature {
+//     id               String                @id @default(cuid())
+//     planId           String
+//     featureId        String
+//     enabled          Boolean               @default(true)
+//     value            String // JSON string for complex values (e.g., {"limit": 1000, "unit": "records"})
+//     enforceLimit     Boolean               @default(true)
+//     displayInPricing Boolean               @default(true)
+//     customLabel      String? // For displaying custom text in pricing page
+//     // Relationships
+//     plan             PricingPlan           @relation(fields: [planId], references: [id])
+//     feature          Feature               @relation(fields: [featureId], references: [id])
+//     overrides        PlanFeatureOverride[]
+
+//     @@unique([planId, featureId])
+// }
+
+// model PlanFeatureOverride {
+//     id            String      @id @default(cuid())
+//     planFeatureId String
+//     tenantId      String
+//     value         String // JSON string for override values
+//     reason        String?
+//     expiresAt     DateTime?
+//     createdAt     DateTime    @default(now())
+//     updatedAt     DateTime    @updatedAt
+//     // Relationships
+//     planFeature   PlanFeature @relation(fields: [planFeatureId], references: [id])
+//     tenant        Tenant      @relation(fields: [tenantId], references: [id])
+// }
+
+// enum PlanStatus {
+//     ACTIVE
+//     INACTIVE
+//     ARCHIVED
+// }
+
+// enum PlanVisibility {
+//     PUBLIC
+//     PRIVATE
+//     CUSTOM
+// }
+
+// model Tenant {
+//     id                   String       @id @default(uuid())
+//     name                 String
+//     subscription_plan_id String?
+//     domain_id            String?      @map("domain_id")
+//     is_active            Boolean?
+//     domains              Domain[]
+//     smtpServers          SMTPServer[]
+//     version              Float        @default(1.0)
+//     group_policy_id      String
+//     team_size            String?
+//     industry             String?
+//     recruitment_type     String?
+//     location             String?
+//     created_by           String?      @map("created_by")
+//     created_at           DateTime     @default(now())
+//     updated_by           String?      @map("updated_by")
+//     updated_at           DateTime?    @updatedAt @map("updated_time")
+//     deleted_time         DateTime?    @map("deleted_time")
+
+//     users User[]
+
+//     @@index([domain_id])
+//     @@index([subscription_plan_id])
+//     @@index([group_policy_id])
+//     @@index([deleted_time])
+//     @@index([created_by])
+//     @@map("tenants")
+// }
+
+// ==================== Subscriptions & Billing ====================
+
+// model TenantSubscription {
+//     id                   String                      @id @default(cuid())
+//     tenantId             String
+//     planId               String
+//     status               SubscriptionStatus
+//     startDate            DateTime
+//     endDate              DateTime?
+//     trialEndDate         DateTime?
+//     canceledAt           DateTime?
+//     currentPeriodStart   DateTime
+//     currentPeriodEnd     DateTime
+//     createdAt            DateTime                    @default(now())
+//     updatedAt            DateTime                    @updatedAt
+//     // Relationships
+//     tenant               Tenant                      @relation(fields: [tenantId], references: [id])
+//     plan                 PricingPlan                 @relation(fields: [planId], references: [id])
+//     invoices             Invoice[]
+//     customizations       SubscriptionCustomization[]
+//     stripeSubscriptionId String?                     @unique
+// }
+
+// model SubscriptionCustomization {
+//     id             String             @id @default(cuid())
+//     subscriptionId String
+//     type           CustomizationType
+//     value          String // JSON string for complex values
+//     reason         String?
+//     approvedBy     String?
+//     validUntil     DateTime?
+//     createdAt      DateTime           @default(now())
+//     updatedAt      DateTime           @updatedAt
+//     // Relationships
+//     subscription   TenantSubscription @relation(fields: [subscriptionId], references: [id])
+// }
+
+// enum SubscriptionStatus {
+//     ACTIVE
+//     CANCELED
+//     PAST_DUE
+//     TRIAL
+//     EXPIRED
+// }
+
+// enum CustomizationType {
+//     FEATURE_OVERRIDE
+//     PRICE_OVERRIDE
+//     TRIAL_EXTENSION
+//     USAGE_LIMIT_OVERRIDE
+// }
+
+// enum BillingInterval {
+//     MONTHLY
+//     QUARTERLY
+//     ANNUAL
+// }
+
+// ==================== Usage & Metrics ====================
+
+// model UsageMetric {
+//     id        String   @id @default(cuid())
+//     tenantId  String
+//     moduleId  String?
+//     featureId String?
+//     metric    String
+//     value     Float
+//     timestamp DateTime
+//     // Relationships
+//     tenant    Tenant   @relation(fields: [tenantId], references: [id])
+//     module    Module?  @relation(fields: [moduleId], references: [id])
+//     feature   Feature? @relation(fields: [featureId], references: [id])
+// }
+
+// // ==================== Policies & Restrictions ====================
+
+// model RestrictionPolicy {
+//     id            String                @id @default(cuid())
+//     name          String
+//     description   String
+//     type          PolicyType
+//     config        String // JSON string for policy configuration
+//     createdBy     String
+//     status        PolicyStatus          @default(ACTIVE)
+//     createdAt     DateTime              @default(now())
+//     updatedAt     DateTime              @updatedAt
+//     // Relationships
+//     creator       User                  @relation("PolicyCreator", fields: [createdBy], references: [id])
+//     tenantConfigs TenantConfiguration[]
+// }
+
+// enum PolicyType {
+//     RATE_LIMIT
+//     VENDOR_LOCK
+//     IP_RESTRICTION
+//     FEATURE_TOGGLE
+//     USAGE_QUOTA
+// }
+
+// enum PolicyStatus {
+//     ACTIVE
+//     INACTIVE
+//     ARCHIVED
+// }
+
+// ==================== Billing & Payments ====================
+
+// model Invoice {
+//     id              String             @id @default(cuid())
+//     subscriptionId  String
+//     amount          Decimal
+//     currency        String             @default("USD")
+//     status          InvoiceStatus
+//     dueDate         DateTime
+//     paidAt          DateTime?
+//     createdAt       DateTime           @default(now())
+//     updatedAt       DateTime           @updatedAt
+//     // Relationships
+//     subscription    TenantSubscription @relation(fields: [subscriptionId], references: [id])
+//     payments        Payment[]
+//     stripeInvoiceId String?            @unique
+// }
+
+// model Payment {
+//     id              String        @id @default(cuid())
+//     invoiceId       String
+//     amount          Decimal
+//     currency        String        @default("USD")
+//     status          PaymentStatus
+//     paymentMethod   PaymentMethod
+//     createdAt       DateTime      @default(now())
+//     updatedAt       DateTime      @updatedAt
+//     // Relationships
+//     invoice         Invoice       @relation(fields: [invoiceId], references: [id])
+//     stripePaymentId String?       @unique
+// }
+
+// enum InvoiceStatus {
+//     DRAFT
+//     SENT
+//     PAID
+//     VOID
+//     PAST_DUE
+// }
+
+// enum PaymentStatus {
+//     PENDING
+//     COMPLETED
+//     FAILED
+//     REFUNDED
+// }
+
+// enum PaymentMethod {
+//     CREDIT_CARD
+//     BANK_TRANSFER
+//     WIRE
+//     OTHER
+// }
+
+// ==================== Tenant Configuration ====================
+
+// model TenantConfiguration {
+//     id        String            @id @default(cuid())
+//     tenantId  String
+//     policyId  String
+//     config    String // JSON string for configuration
+//     status    ConfigStatus      @default(ACTIVE)
+//     createdAt DateTime          @default(now())
+//     updatedAt DateTime          @updatedAt
+//     // Relationships
+//     tenant    Tenant            @relation(fields: [tenantId], references: [id])
+//     policy    RestrictionPolicy @relation(fields: [policyId], references: [id])
+// }
+
+// enum ConfigStatus {
+//     ACTIVE
+//     INACTIVE
+//     PENDING
+// }
+
+// ==================== API Management ====================
+
+// model ApiKey {
+//     id         String    @id @default(cuid())
+//     tenantId   String
+//     name       String
+//     key        String    @unique
+//     scope      String[] // Array of permitted scopes
+//     expiresAt  DateTime?
+//     lastUsedAt DateTime?
+//     createdAt  DateTime  @default(now())
+//     updatedAt  DateTime  @updatedAt
+//     // Relationships
+//     tenant     Tenant    @relation(fields: [tenantId], references: [id])
+// }
+
+// ==================== Marketing & Communication ====================
+
+// model Announcement {
+//     id            String             @id @default(cuid())
+//     title         String
+//     content       String
+//     type          AnnouncementType
+//     status        AnnouncementStatus @default(DRAFT)
+//     publishAt     DateTime?
+//     expiresAt     DateTime?
+//     createdAt     DateTime           @default(now())
+//     updatedAt     DateTime           @updatedAt
+//     // Relationships
+//     notifications Notification[]
+// }
+
+// model Notification {
+//     id             String             @id @default(cuid())
+//     userId         String
+//     announcementId String?
+//     title          String
+//     content        String
+//     type           NotificationType
+//     status         NotificationStatus @default(UNREAD)
+//     createdAt      DateTime           @default(now())
+//     updatedAt      DateTime           @updatedAt
+//     // Relationships
+//     user           User               @relation(fields: [userId], references: [id])
+//     announcement   Announcement?      @relation(fields: [announcementId], references: [id])
+// }
+
+// enum AnnouncementType {
+//     FEATURE_UPDATE
+//     MAINTENANCE
+//     PROMOTION
+//     GENERAL
+// }
+
+// enum AnnouncementStatus {
+//     DRAFT
+//     SCHEDULED
+//     PUBLISHED
+//     ARCHIVED
+// }
+
+// enum NotificationType {
+//     ANNOUNCEMENT
+//     SYSTEM
+//     BILLING
+//     SECURITY
+// }
+
+// enum NotificationStatus {
+//     UNREAD
+//     READ
+//     ARCHIVED
+// }
+
+// ==================== Sales & Activity Tracking ====================
+
+// model SalesActivity {
+//     id          String       @id @default(cuid())
+//     salesRepId  String
+//     tenantId    String?
+//     type        ActivityType
+//     description String
+//     outcome     String?
+//     scheduledAt DateTime?
+//     completedAt DateTime?
+//     createdAt   DateTime     @default(now())
+//     updatedAt   DateTime     @updatedAt
+//     // Relationships
+//     salesRep    User         @relation("SalesRepActivities", fields: [salesRepId], references: [id])
+// }
+
+// enum ActivityType {
+//     CALL
+//     EMAIL
+//     MEETING
+//     DEMO
+//     FOLLOW_UP
+// }
+
+// ==================== Audit Logging ====================
+
+// model AuditLog {
+//     id         String   @id @default(cuid())
+//     userId     String
+//     action     String
+//     entityType String
+//     entityId   String
+//     changes    String // JSON string for changes
+//     metadata   String? // Additional JSON metadata
+//     createdAt  DateTime @default(now())
+//     // Relationships
+//     user       User     @relation(fields: [userId], references: [id])
+// }

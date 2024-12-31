@@ -1,0 +1,443 @@
+//// ------------------------------------------------------
+//// THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+//// ------------------------------------------------------
+
+Table users {
+  id String [pk]
+  first_name String [not null]
+  last_name String [not null]
+  username String [unique, not null]
+  email String [unique, not null]
+  password String [not null]
+  bio String
+  phone String
+  job_title String
+  address user_address
+  email_verified Boolean [default: true]
+  created_by String
+  created_at DateTime [default: `now()`, not null]
+  last_updated_by String
+  last_updated_at DateTime
+  deleted_at DateTime
+  deleted_by String
+  team_memberships team_members [not null]
+  devices devices [not null]
+
+  indexes {
+    (id, first_name, last_name, username, email) [unique]
+  }
+}
+
+Table user_address {
+  id String [pk]
+  country String [not null]
+  short_code String [not null]
+  state String [not null]
+  city String [not null]
+  zip String [not null]
+  created_by String [not null, default: 'system']
+  last_updated_by String [not null, default: 'system']
+  deleted_by String
+  created_at DateTime [default: `now()`, not null]
+  last_updated_at DateTime [not null]
+  deleted_at DateTime
+  user_id String [unique, not null]
+  user users [not null]
+}
+
+Table devices {
+  id String [pk]
+  device_id String [unique, not null]
+  user_id String [unique, not null]
+  user users [not null]
+  last_accessed_at DateTime [not null]
+  last_accessed_from_location_id String [unique, not null]
+  last_accessed_from DeviceLocation
+  location_history DeviceLocation [not null]
+  deviceMetadata Json[] [not null]
+
+  indexes {
+    (id, device_id, user_id) [unique]
+  }
+}
+
+Table DeviceLocation {
+  id String [pk]
+  device_id String [unique, not null]
+  device devices [not null]
+  lat Float [not null]
+  long Float [not null]
+  last_used_by devices
+}
+
+Table team_members {
+  id String [pk]
+  is_team_lead Boolean [not null, default: false]
+  first_name String [not null]
+  last_name String [not null]
+  username String [unique, not null]
+  email String [unique, not null]
+  bio String
+  phone String
+  user_id String [unique, not null]
+  user users [not null]
+  team_ids String[] [not null]
+  teams teams [not null]
+}
+
+Table teams {
+  id String [pk]
+  name String [not null]
+  description String [not null]
+  is_active Boolean [not null, default: true]
+  performance_score Float
+  budget Float
+  goals String
+  meeting_frequency String
+  version Float [not null, default: 1]
+  last_updated_by String
+  last_updated_at DateTime
+  created_by String
+  deleted_by String
+  created_at DateTime [default: `now()`, not null]
+  deleted_at DateTime
+  department_id String [unique, not null]
+  department_code String [unique, not null]
+  departments departments [not null]
+  team_members team_members [not null]
+}
+
+Table departments {
+  id String [pk]
+  name String [not null]
+  description String [not null]
+  code String [unique, not null]
+  version Float [not null, default: 1]
+  is_active Boolean [not null, default: true]
+  created_by String [not null, default: 'system']
+  last_updated_by String [not null, default: 'system']
+  deleted_by String
+  created_at DateTime [default: `now()`, not null]
+  last_updated_at DateTime [default: `now()`, not null]
+  deleted_at DateTime
+  teams teams [not null]
+  parent_id String
+  parent departments
+  children departments [not null]
+
+  indexes {
+    (id, code) [unique]
+  }
+}
+
+Table table_meta {
+  id String [pk]
+  name String [unique, not null]
+  description String
+  icon String
+  version Float [not null, default: 1]
+  fields field [not null]
+  relatedFields field [not null]
+  views view [not null]
+  relationsFrom table_relation [not null]
+  relationsTo table_relation [not null]
+  record data [not null]
+  tableMetaHistory table_meta_history [not null]
+  recordHistory record_history [not null]
+  created_by String
+  updated_by String
+  deleted_by String
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [not null]
+  deleted_time DateTime
+  status StatusEnum [not null, default: 'ACTIVE']
+  db_table_name String [unique, not null]
+}
+
+Table field {
+  id String [pk]
+  table_id String [not null]
+  name String [not null]
+  description String
+  options String
+  type FieldType [not null]
+  cell_value_type CellValueType [not null]
+  is_multiple_cell_value Boolean
+  db_field_type DBFieldType [not null]
+  db_field_name String [not null]
+  status StatusEnum [not null, default: 'ACTIVE']
+  not_null Boolean
+  unique Boolean
+  is_primary Boolean
+  is_computed Boolean
+  is_lookup Boolean
+  is_pending Boolean
+  has_error Boolean
+  lookup_linked_field_id String
+  lookup_options String
+  related_table_id String
+  version Float [not null, default: 1]
+  created_by String
+  created_at DateTime [default: `now()`, not null]
+  updated_by String
+  updated_at DateTime [not null]
+  deleted_time DateTime
+  deleted_by String
+  table table_meta [not null]
+  datas record [not null]
+  relatedTable table_meta
+  history FieldHistory [not null]
+
+  indexes {
+    (table_id, name) [unique]
+  }
+}
+
+Table table_meta_history {
+  id String [pk]
+  table_meta_id String [not null]
+  name String [not null]
+  user_id String [not null]
+  description String
+  icon String
+  db_table_name String [not null]
+  version Float [not null]
+  created_by String
+  created_at DateTime [not null]
+  updated_by String
+  updated_at DateTime [not null]
+  deleted_time DateTime
+  deleted_by String
+  changed_at DateTime [default: `now()`, not null]
+  changed_by String
+  tableMeta table_meta [not null]
+}
+
+Table FieldHistory {
+  id String [pk]
+  field_id String [not null]
+  field field [not null]
+  version Int [not null]
+  name String [not null]
+  type String [not null]
+  db_field_type String [not null]
+  db_field_name String [not null]
+  description String
+  previous_data Json [not null]
+  new_data Json [not null]
+  changed_by String [not null]
+  changed_at DateTime [default: `now()`, not null]
+}
+
+Table record_history {
+  id String [pk]
+  record_id String [not null]
+  table_id String [not null]
+  table table_meta [not null]
+  version Int [not null]
+  action RecordOperationEnum [not null]
+  data Json [not null]
+  created_by String [not null]
+  created_at DateTime [default: `now()`, not null]
+  metadata Json
+}
+
+Table table_relation {
+  id String [pk]
+  source_table_id String [not null]
+  target_table_id String [not null]
+  source_field_id String [not null]
+  target_field_id String
+  relation_type RelationType [not null]
+  user_id String
+  created_by String [not null]
+  created_at DateTime [default: `now()`, not null]
+  updated_by String
+  updated_at DateTime [not null]
+  deleted_time DateTime
+  deleted_by String
+  sourceTable table_meta [not null]
+  targetTable table_meta [not null]
+}
+
+Table view {
+  id String [pk]
+  name String [not null]
+  description String
+  table_id String [not null]
+  type ViewType [not null]
+  sort String
+  filter String
+  group String
+  options String
+  version Float [not null, default: 1]
+  column_meta String [not null]
+  enable_share Boolean
+  share_id String
+  share_meta String
+  created_by String
+  created_at DateTime [default: `now()`, not null]
+  updated_by String
+  updated_at DateTime [not null]
+  deleted_time DateTime
+  deleted_by String
+  table table_meta [not null]
+
+  indexes {
+    (table_id, name) [unique]
+  }
+}
+
+Table data {
+  id String [pk]
+  table_id String [not null]
+  user_id String [not null]
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [not null]
+  deleted_time DateTime
+  deleted_by String
+  table table_meta [not null]
+  data record [not null]
+}
+
+Table record {
+  id String [pk]
+  record_id String [not null]
+  field_id String [not null]
+  value String
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [not null]
+  record data [not null]
+  field field [not null]
+}
+
+Table notes {
+  id String [pk]
+  tableId String [not null]
+  note String [not null]
+  createdTime DateTime [default: `now()`, not null]
+  lastModifiedTime DateTime
+  createdBy String [not null]
+  lastModifiedBy String
+}
+
+Table TeamToTeamMember {
+  teamsId String [ref: > teams.id]
+  team_membersId String [ref: > team_members.id]
+}
+
+Enum DBFieldType {
+  SMALLINT
+  INTEGER
+  BIGINT
+  DECIMAL
+  NUMERIC
+  REAL
+  DOUBLE_PRECISION
+  SERIAL
+  BIGSERIAL
+  CHAR
+  VARCHAR
+  TEXT
+  DATE
+  TIME
+  TIMESTAMP
+  TIMESTAMPTZ
+  INTERVAL
+  BOOLEAN
+  UUID
+  JSON
+  JSONB
+  BYTEA
+  INET
+  CIDR
+  MACADDR
+  TSVECTOR
+  TSQUERY
+  POINT
+  LINE
+  LSEG
+  BOX
+  CIRCLE
+  ARRAY
+}
+
+Enum RelationType {
+  ONE_TO_ONE
+  ONE_TO_MANY
+  MANY_TO_ONE
+  MANY_TO_MANY
+}
+
+Enum FieldType {
+  TEXT
+  NUMBER
+  DATE
+  BOOLEAN
+  LOOKUP
+  MULTISELECT
+  ATTACHMENT
+}
+
+Enum CellValueType {
+  STRING
+  INTEGER
+  FLOAT
+  BOOLEAN
+  DATE
+  JSON
+}
+
+Enum ViewType {
+  GRID
+  CALENDAR
+  KANBAN
+  GALLERY
+}
+
+Enum StatusEnum {
+  ACTIVE
+  IN_ACTIVE
+}
+
+Enum RecordOperationEnum {
+  INSERT
+  UPDATE
+  DELETE
+}
+
+Ref: user_address.user_id - users.id
+
+Ref: devices.user_id > users.id
+
+Ref: devices.last_accessed_from_location_id - DeviceLocation.id
+
+Ref: DeviceLocation.device_id - devices.id
+
+Ref: team_members.(user_id, first_name, last_name, username, email) > users.(id, first_name, last_name, username, email)
+
+Ref: teams.(department_id, department_code) > departments.(id, code)
+
+Ref: departments.parent_id - departments.id
+
+Ref: field.table_id > table_meta.id
+
+Ref: field.related_table_id > table_meta.id
+
+Ref: table_meta_history.table_meta_id > table_meta.id
+
+Ref: FieldHistory.field_id > field.id
+
+Ref: record_history.table_id > table_meta.id
+
+Ref: table_relation.source_table_id > table_meta.id
+
+Ref: table_relation.target_table_id > table_meta.id
+
+Ref: view.table_id > table_meta.id
+
+Ref: data.table_id > table_meta.id
+
+Ref: record.record_id > data.id
+
+Ref: record.field_id > field.id
