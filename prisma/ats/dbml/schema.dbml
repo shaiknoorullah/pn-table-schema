@@ -1,0 +1,682 @@
+//// ------------------------------------------------------
+//// THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+//// ------------------------------------------------------
+
+Table users {
+  id String [pk]
+  email String [unique, not null]
+  name String
+  role UserRole [not null, default: 'USER']
+  status UserStatus [not null, default: 'ACTIVE']
+  last_login_at DateTime
+  notifications notifications [not null]
+  sales_activities sales_activities [not null]
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [not null]
+}
+
+Table resources {
+  id String [pk]
+  name String [unique, not null]
+  code String [unique, not null]
+  description String
+  type ResourceType [not null]
+  custom_resource String
+  modules modules [not null]
+  metrics metric_definitions [not null]
+  usage_events usage_events [not null]
+  billing_rules billing_rules [not null]
+  openmeter_resource_id String
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [not null]
+}
+
+Table modules {
+  id String [pk]
+  name String [not null]
+  code String [unique, not null]
+  description String
+  status ModuleStatus [not null, default: 'ACTIVE']
+  resource resources [not null]
+  resource_id String [not null]
+  features features [not null]
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [not null]
+}
+
+Table feature_categories {
+  id String [pk]
+  name String [unique, not null]
+  display_order Int [not null]
+  description String
+  features features [not null]
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [not null]
+}
+
+Table features {
+  id String [pk]
+  name String [not null]
+  code String [unique, not null]
+  display_name String [not null]
+  description String [not null]
+  type FeatureType [not null]
+  default_value Json
+  is_new Boolean [not null, default: false]
+  status FeatureStatus [not null, default: 'ACTIVE']
+  display_order Int [not null]
+  metrics metric_definitions [not null]
+  module modules [not null]
+  module_id String [not null]
+  category feature_categories [not null]
+  category_name String [not null]
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [not null]
+}
+
+Table entities {
+  id String [pk]
+  name String [not null]
+  description String
+  entity_type EntityType [not null]
+  entity_id String [unique, not null]
+  status String [not null, default: 'ACTIVE']
+  parent_entity_id String
+  parent_entity entities
+  child_entities entities [not null]
+  enforcement_rules enforcement_rules [not null]
+  openmeter_entity_id String
+  metadata Json
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [not null]
+  UsageMetric usage_metrics [not null]
+
+  indexes {
+    (entity_id, entity_type) [unique]
+  }
+}
+
+Table enforcement_rules {
+  id String [pk]
+  name String [not null]
+  description String
+  version Int [not null, default: 1]
+  status String [not null, default: 'ACTIVE']
+  entity entities [not null]
+  entity_id String [not null]
+  rule_type RuleType [not null]
+  evaluation_type EvaluationType [not null]
+  operator OperatorType [not null]
+  priority Int [not null, default: 0]
+  starts_at DateTime
+  expires_at DateTime
+  propagate_to_children Boolean [not null, default: false]
+  conditions rule_conditions [not null]
+  billable_metric_id String
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [not null]
+
+  indexes {
+    (entity_id, rule_type) [unique]
+  }
+}
+
+Table rule_evaluations {
+  id String [pk]
+  rule_id String [not null]
+  entity_id String [not null]
+  result Boolean [not null]
+  context Json [not null]
+  created_at DateTime [default: `now()`, not null]
+}
+
+Table rule_versions {
+  id String [pk]
+  rule_id String [not null]
+  version Int [not null]
+  changes Json [not null]
+  created_by String
+  created_at DateTime [default: `now()`, not null]
+
+  indexes {
+    (rule_id, version) [unique]
+  }
+}
+
+Table rate_limit_entries {
+  id String [pk]
+  key String [not null]
+  count Int [not null]
+  window_start DateTime [not null]
+  window_end DateTime [not null]
+  created_at DateTime [default: `now()`, not null]
+
+  indexes {
+    (key, window_start) [unique]
+  }
+}
+
+Table rule_conditions {
+  id String [pk]
+  rule enforcement_rules [not null]
+  rule_id String [not null]
+  condition_type ConditionType [not null]
+  threshold_type ThresholdType [not null]
+  threshold_value Float [not null]
+  time_window TimeWindow
+  group_operator GroupOperator
+  group_order Int
+  parent_condition_id String
+  actions condition_actions [not null]
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [not null]
+}
+
+Table condition_actions {
+  id String [pk]
+  condition rule_conditions [not null]
+  condition_id String [not null]
+  action_type ActionType [not null]
+  action_config action_configs
+  action_config_id String
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [not null]
+}
+
+Table action_configs {
+  id String [pk]
+  name String [not null]
+  config_type ActionConfigType [not null]
+  notification_template String
+  notification_channels String[] [not null]
+  rate_limit_window TimeWindow
+  rate_limit_value Int
+  quota_reset_period TimeWindow
+  quota_value Float
+  actions condition_actions [not null]
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [not null]
+}
+
+Table usage_metrics {
+  id String [pk]
+  metric_type MetricType [not null]
+  value Float [not null]
+  time_window TimeWindow [not null]
+  openmeter_metric_id String [not null]
+  timestamp DateTime [default: `now()`, not null]
+  entity entities [not null]
+  entity_id String [not null]
+  entity_type EntityType [not null]
+}
+
+Table subscription_plans {
+  id String [pk]
+  name String [unique, not null]
+  description String
+  type PlanType [not null]
+  interval BillingInterval [not null]
+  price Decimal [not null]
+  features Json [not null]
+  quotas Json [not null]
+  trial_days Int [not null, default: 90]
+  billing_rules billing_rules [not null]
+  tenant_subscriptions tenant_subscriptions [not null]
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [not null]
+}
+
+Table billing_rules {
+  id String [pk]
+  name String [not null]
+  plan subscription_plans [not null]
+  plan_id String [not null]
+  metric_definition metric_definitions [not null]
+  metric_id String [not null]
+  pricing_model PricingModel [not null]
+  pricing_tiers Json [not null]
+  resource resources [not null]
+  resource_id String [not null]
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [not null]
+}
+
+Table metric_definitions {
+  id String [pk]
+  name String [not null]
+  type MetricType [not null]
+  resource resources [not null]
+  resource_id String [not null]
+  feature features
+  feature_id String
+  aggregation AggregationType [not null]
+  unit String
+  billing_rules billing_rules [not null]
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [not null]
+}
+
+Table usage_events {
+  id String [pk]
+  resource resources [not null]
+  resource_id String [not null]
+  tenant tenants [not null]
+  tenant_id String [not null]
+  metric_name String [not null]
+  value Float [not null]
+  timestamp DateTime [default: `now()`, not null]
+  metadata Json
+}
+
+Table invoices {
+  id String [pk]
+  amount Decimal [not null]
+  currency String [not null, default: 'USD']
+  status InvoiceStatus [not null]
+  due_date DateTime [not null]
+  paid_at DateTime
+  subscription tenant_subscriptions [not null]
+  subscription_id String [not null]
+  tenant_id String [not null]
+  payments payments [not null]
+  stripe_invoice_id String [unique]
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [not null]
+
+  indexes {
+    (id, subscription_id, tenant_id) [unique]
+  }
+}
+
+Table payments {
+  id String [pk]
+  amount Float [not null]
+  currency String [not null, default: 'USD']
+  status PaymentStatus [not null]
+  payment_method PaymentMethod [not null]
+  invoice invoices [not null]
+  invoice_id String [unique, not null]
+  tenant_id String [not null]
+  subscription_id String [not null]
+  stripe_payment_id String [unique]
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [not null]
+}
+
+Table tenants {
+  id String [pk]
+  name String [not null]
+  subscription_plan tenant_subscriptions
+  custom_quotas Json
+  billing_settings Json [not null]
+  usage_events usage_events [not null]
+  is_active Boolean
+  group_policy_id String
+  team_size String
+  industry String
+  recruitment_type String
+  location String
+  timezone String
+  trial_ends_at DateTime
+  created_by String
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [not null]
+  deleted_at DateTime
+}
+
+Table tenant_subscriptions {
+  id String [pk]
+  status SubscriptionStatus [not null]
+  start_date DateTime [not null]
+  end_date DateTime
+  trial_end_date DateTime
+  canceled_at DateTime
+  current_period_start DateTime [not null]
+  current_period_end DateTime [not null]
+  plan_id String [unique, not null]
+  tenant_id String [unique, not null]
+  tenant tenants [not null]
+  plan subscription_plans [not null]
+  invoices invoices [not null]
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [not null]
+
+  indexes {
+    (id, tenant_id) [unique]
+  }
+}
+
+Table announcements {
+  id String [pk]
+  title String [not null]
+  content String [not null]
+  type AnnouncementType [not null]
+  status AnnouncementStatus [not null, default: 'DRAFT']
+  publish_at DateTime
+  expires_at DateTime
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [not null]
+  notifications notifications [not null]
+}
+
+Table notifications {
+  id String [pk]
+  title String [not null]
+  content String [not null]
+  type NotificationType [not null]
+  status NotificationStatus [not null, default: 'UNREAD']
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [not null]
+  user users [not null]
+  user_id String [not null]
+  announcement announcements
+  announcement_id String
+}
+
+Table sales_activities {
+  id String [pk]
+  tenant_id String
+  type ActivityType [not null]
+  description String [not null]
+  outcome String
+  scheduled_at DateTime
+  completed_at DateTime
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [not null]
+  sales_rep users [not null]
+  sales_rep_id String [not null]
+}
+
+Enum UserRole {
+  SUPER_ADMIN
+  SALES_REP
+  ENGINEER
+  ACCOUNTS
+  MARKETING
+  USER
+}
+
+Enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+Enum ResourceType {
+  API
+  SERVICE
+  AI_MODEL
+  INTEGRATION
+  STORAGE
+  CUSTOM
+}
+
+Enum ModuleStatus {
+  ACTIVE
+  INACTIVE
+  DEPRECATED
+}
+
+Enum FeatureStatus {
+  ACTIVE
+  INACTIVE
+  DEPRECATED
+  BETA
+}
+
+Enum FeatureType {
+  BOOLEAN
+  NUMERIC
+  TIERED
+  METERED
+}
+
+Enum EntityType {
+  FEATURE
+  MODULE
+  RESOURCE
+  SERVICE
+  INTEGRATION
+  API_ENDPOINT
+}
+
+Enum RuleType {
+  RATE_LIMIT
+  QUOTA
+  FEATURE_FLAG
+  ACCESS_CONTROL
+  USAGE_LIMIT
+  COMPOSITE
+}
+
+Enum EvaluationType {
+  REAL_TIME
+  PERIODIC
+  EVENT_BASED
+}
+
+Enum OperatorType {
+  EQUALS
+  GREATER_THAN
+  LESS_THAN
+  BETWEEN
+  IN_LIST
+  NOT_IN_LIST
+  REGEX_MATCH
+}
+
+Enum ConditionType {
+  USAGE_COUNT
+  USAGE_RATE
+  TIME_WINDOW
+  USER_ATTRIBUTE
+  TENANT_ATTRIBUTE
+  COMPOSITE
+}
+
+Enum ThresholdType {
+  ABSOLUTE
+  PERCENTAGE
+  RATIO
+}
+
+Enum TimeWindow {
+  MINUTE
+  HOUR
+  DAY
+  WEEK
+  MONTH
+  QUARTER
+  YEAR
+}
+
+Enum GroupOperator {
+  AND
+  OR
+}
+
+Enum ActionType {
+  BLOCK
+  NOTIFY
+  THROTTLE
+  LOG
+  UPGRADE_PROMPT
+  NOTIFY_ADMIN
+  NOTIFY_USER
+  SUSPEND_ACCESS
+  DEGRADE_SERVICE
+  UPGRADE_REQUIRED
+  CUSTOM
+}
+
+Enum ActionConfigType {
+  NOTIFICATION
+  RATE_LIMIT
+  QUOTA
+  CUSTOM
+}
+
+Enum PlanType {
+  FREE
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+  CUSTOM
+}
+
+Enum BillingInterval {
+  MONTHLY
+  QUATERLY
+  YEARLY
+  CUSTOM
+}
+
+Enum PricingModel {
+  FLAT_RATE
+  PER_UNIT
+  TIERED
+  VOLUME
+  PACKAGE
+  CUSTOM
+}
+
+Enum MetricType {
+  COUNT
+  GAUGE
+  HISTOGRAM
+  DURATION
+  AI_TOKENS
+  API_CALLS
+  STORAGE_SIZE
+  REQUEST_COUNT
+  ERROR_COUNT
+  DATA_VOLUME
+  UNIQUE_USERS
+  ACTIVE_USERS
+  CONCURRENT_USERS
+  BANDWIDTH_USAGE
+  CPU_UTILIZATION
+  MEMORY_USAGE
+  CUSTOM
+}
+
+Enum AggregationType {
+  SUM
+  AVG
+  MAX
+  MIN
+  PERCENTILE
+  UNIQUE_COUNT
+  COUNT
+}
+
+Enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  VOID
+  PAST_DUE
+}
+
+Enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+Enum PaymentMethod {
+  CREDIT_CARD
+  BANK_TRANSFER
+  WIRE
+  OTHER
+}
+
+Enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  TRIAL
+  EXPIRED
+}
+
+Enum AnnouncementType {
+  FEATURE_UPDATE
+  MAINTENANCE
+  PROMOTION
+  GENERAL
+}
+
+Enum AnnouncementStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+}
+
+Enum NotificationType {
+  ANNOUNCEMENT
+  SYSTEM
+  BILLING
+  SECURITY
+}
+
+Enum NotificationStatus {
+  UNREAD
+  READ
+  ARCHIVED
+}
+
+Enum ActivityType {
+  CALL
+  EMAIL
+  MEETING
+  DEMO
+  FOLLOW_UP
+}
+
+Ref: modules.resource_id > resources.id
+
+Ref: features.module_id > modules.id
+
+Ref: features.category_name > feature_categories.name
+
+Ref: entities.parent_entity_id - entities.id
+
+Ref: enforcement_rules.entity_id > entities.id
+
+Ref: rule_conditions.rule_id > enforcement_rules.id
+
+Ref: condition_actions.condition_id > rule_conditions.id
+
+Ref: condition_actions.action_config_id > action_configs.id
+
+Ref: usage_metrics.(entity_id, entity_type) > entities.(entity_id, entity_type)
+
+Ref: billing_rules.plan_id > subscription_plans.id
+
+Ref: billing_rules.metric_id > metric_definitions.id
+
+Ref: billing_rules.resource_id > resources.id
+
+Ref: metric_definitions.resource_id > resources.id
+
+Ref: metric_definitions.feature_id > features.id
+
+Ref: usage_events.resource_id > resources.id
+
+Ref: usage_events.tenant_id > tenants.id
+
+Ref: invoices.(subscription_id, tenant_id) > tenant_subscriptions.(id, tenant_id)
+
+Ref: payments.(invoice_id, subscription_id, tenant_id) > invoices.(id, subscription_id, tenant_id)
+
+Ref: tenant_subscriptions.tenant_id - tenants.id
+
+Ref: tenant_subscriptions.plan_id > subscription_plans.id
+
+Ref: notifications.user_id > users.id
+
+Ref: notifications.announcement_id > announcements.id
+
+Ref: sales_activities.sales_rep_id > users.id

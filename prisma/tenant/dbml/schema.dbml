@@ -1,0 +1,1756 @@
+//// ------------------------------------------------------
+//// THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+//// ------------------------------------------------------
+
+Table tenant_configurations {
+  id String [pk]
+  tenant_id String [unique, not null]
+  policy_id String [not null]
+  config String [not null]
+  status ConfigStatus [not null, default: 'ACTIVE']
+  domains domains [not null]
+  external_integrations external_integrations [not null]
+  email_preference email_preference
+  email_servers email_servers [not null]
+  last_updated_at DateTime [not null]
+  created_at DateTime [default: `now()`, not null]
+  ApiKey api_keys [not null]
+
+  indexes {
+    (id, tenant_id) [unique]
+  }
+}
+
+Table external_integrations {
+  id String [pk]
+  name IntegrationName [not null]
+  category IntegrationCategory [not null]
+  auth_strategy AuthStrategy [not null]
+  config Json [not null]
+  credentials Json [not null]
+  enabled Boolean [not null, default: true]
+  usage_metrics integration_usage_metrics [not null]
+  credit_usage integration_credit_usage [not null]
+  tenant_config tenant_configurations [not null]
+  tenant_id String [not null]
+  tenant_config_id String [not null]
+  integrationNotification integration_notifications [not null]
+  created_at DateTime [default: `now()`, not null]
+  last_updated_at DateTime [not null]
+
+  indexes {
+    (id, tenant_id) [unique]
+  }
+}
+
+Table integration_usage_metrics {
+  id String [pk]
+  integration external_integrations [not null]
+  integration_id String [not null]
+  metric_type MetricType [not null]
+  interval ExtUsageTrackingInterval [not null]
+  request_count Int [not null, default: 0]
+  error_count Int [not null, default: 0]
+  latency_ms Int
+  limit_remaining Int
+  limit_reset_at DateTime
+  custom_metrics custom_metric_values [not null]
+  timestamp DateTime [default: `now()`, not null]
+}
+
+Table custom_metric_values {
+  id String [pk]
+  usage_metric integration_usage_metrics [not null]
+  usage_metric_id String [not null]
+  name String [not null]
+  value Float [not null, default: 0]
+  unit String
+
+  indexes {
+    (usage_metric_id, name) [unique]
+  }
+}
+
+Table integration_credit_usage {
+  id String [pk]
+  integration external_integrations [not null]
+  integration_id String [not null]
+  credit_amount Int [not null]
+  credit_type String [not null]
+  description String [not null]
+  timestamp DateTime [default: `now()`, not null]
+  operation_id String
+  operation_type String
+}
+
+Table email_preference {
+  id String [pk]
+  tenant_id String [unique, not null]
+  tenant_config tenant_configurations [not null]
+  msg Boolean [not null]
+  sdg Boolean [not null]
+  created_at DateTime [default: `now()`, not null]
+  last_updated_at DateTime
+}
+
+Table integration_notifications {
+  id String [pk]
+  integration external_integrations [not null]
+  integration_id String [not null]
+  type NotificationType [not null]
+  priority NotificationPriority [not null, default: 'LOW']
+  channel DeliveryChannel [not null]
+  title String [not null]
+  message String [not null]
+  trigger_value Float
+  threshold Float
+  sent_at DateTime [default: `now()`, not null]
+  delivered_at DateTime
+  error String
+}
+
+Table domains {
+  id String [pk]
+  name String [unique, not null]
+  description String
+  status DomainStatus [not null, default: 'PENDING']
+  dns_records dns_records [not null]
+  tenant_config tenant_configurations
+  tenant_id String
+  tenant_config_id String
+  created_at DateTime [default: `now()`, not null]
+  last_updated_at DateTime [not null]
+  deleted_at DateTime
+}
+
+Table dns_records {
+  id String [pk]
+  domain domains [not null]
+  domain_id String [not null]
+  type DNSRecordType [not null]
+  name String [not null]
+  value String [not null]
+  ttl Int [not null, default: 3600]
+  priority Int
+  created_at DateTime [default: `now()`, not null]
+  last_updated_at DateTime [not null]
+  deleted_at DateTime
+  spf_record spf_records
+  dkim_record dkim_records
+  dmarc_record dmarc_records
+
+  indexes {
+    (domain_id, type, name) [unique]
+    (id, domain_id) [unique]
+  }
+}
+
+Table spf_records {
+  id String [pk]
+  dns_record dns_records [not null]
+  domain_id String [unique, not null]
+  dns_record_id String [unique, not null]
+  mechanisms String[] [not null]
+  all SPFAllDirective [not null]
+  created_at DateTime [default: `now()`, not null]
+  last_updated_at DateTime [not null]
+  deleted_at DateTime
+
+  indexes {
+    (dns_record_id, domain_id) [unique]
+  }
+}
+
+Table dkim_records {
+  id String [pk]
+  dns_record dns_records [not null]
+  domain_id String [unique, not null]
+  dns_record_id String [unique, not null]
+  selector String [not null]
+  public_key String [not null]
+  key_type String [not null, default: 'rsa']
+  created_at DateTime [default: `now()`, not null]
+  last_updated_at DateTime [not null]
+  deleted_at DateTime
+
+  indexes {
+    (dns_record_id, domain_id) [unique]
+  }
+}
+
+Table dmarc_records {
+  id String [pk]
+  dns_record dns_records [not null]
+  domain_id String [unique, not null]
+  dns_record_id String [unique, not null]
+  policy DMARCPolicy [not null]
+  subdomain_policy DMARCPolicy
+  percentage Int [not null, default: 100]
+  report_format String[] [not null]
+  report_interval Int [not null, default: 86400]
+  report_uris String[] [not null]
+  created_at DateTime [default: `now()`, not null]
+  last_updated_at DateTime [not null]
+  deleted_at DateTime
+
+  indexes {
+    (dns_record_id, domain_id) [unique]
+  }
+}
+
+Table email_servers {
+  id String [pk]
+  host String [not null]
+  port Int [not null]
+  username String [not null]
+  password String [not null]
+  is_secure Boolean [not null, default: true]
+  is_system_managed Boolean [not null, default: false]
+  server_type EmailServerType [not null]
+  smtp_status SMTPStatus
+  created_at DateTime [default: `now()`, not null]
+  last_updated_at DateTime [not null]
+  deleted_at DateTime
+  tenant_config tenant_configurations [not null]
+  tenant_id String [not null]
+  tenant_config_id String [not null]
+
+  indexes {
+    (server_type, host, username) [unique]
+  }
+}
+
+Table api_keys {
+  id String [pk]
+  name String [not null]
+  key String [unique, not null]
+  scope String[] [not null]
+  expires_at DateTime
+  last_used_at DateTime
+  created_at DateTime [default: `now()`, not null]
+  last_updated_at DateTime [not null]
+  tenant_config tenant_configurations
+  tenant_id String
+  tenant_config_id String
+}
+
+Table users {
+  id String [pk]
+  first_name String [not null]
+  last_name String [not null]
+  username String [unique, not null]
+  email String [unique, not null]
+  password String [not null]
+  bio String
+  phone String
+  job_title String
+  address user_addresses
+  email_verified Boolean [default: true]
+  created_by String
+  created_at DateTime [default: `now()`, not null]
+  last_updated_by String
+  last_updated_at DateTime
+  deleted_at DateTime
+  deleted_by String
+  tenant_id String [not null]
+  devices user_devices [not null]
+  user_group_member user_group_members
+  folders folders [not null]
+  documents documents [not null]
+  shared_documents documents [not null]
+  interview_attendee_as_recruiter interview_attendees
+  interview_attendee_as_bdm interview_attendees
+  interview_attendees_as_internal_user interview_attendees
+  interview_attendies_id String
+  mentions comment_mentions [not null]
+
+  indexes {
+    (id, first_name, last_name, username, email) [unique]
+    (id, email, first_name, last_name) [unique]
+    (id, first_name, last_name) [unique]
+  }
+}
+
+Table user_addresses {
+  id String [pk]
+  country String [not null]
+  short_code String [not null]
+  state String [not null]
+  city String [not null]
+  zip String [not null]
+  created_by String [not null, default: 'system']
+  last_updated_by String [not null, default: 'system']
+  deleted_by String
+  created_at DateTime [default: `now()`, not null]
+  last_updated_at DateTime [not null]
+  deleted_at DateTime
+  user_id String [unique, not null]
+  user users [not null]
+
+  indexes {
+    (country, short_code, state, city, zip, user_id) [unique]
+  }
+}
+
+Table user_devices {
+  id String [pk]
+  unique_device_signature String [unique, not null]
+  user_id String [unique, not null]
+  user users [not null]
+  last_accessed_at DateTime [not null]
+  last_accessed_from_location_id String [unique, not null]
+  last_accessed_from user_device_locations
+  location_history user_device_locations [not null]
+  device_metadata Json[] [not null]
+
+  indexes {
+    (id, unique_device_signature, user_id) [unique]
+    (id, user_id) [unique]
+  }
+}
+
+Table user_device_locations {
+  id String [pk]
+  lat Float [not null]
+  long Float [not null]
+  user_id String [unique, not null]
+  last_used_by user_devices
+  device_id String [unique, not null]
+  device user_devices [not null]
+}
+
+Table audit_logs {
+  id String [pk]
+  tenant_id String [not null]
+  resource_id String
+  user_id String
+  action String [not null]
+  details Json [not null]
+  metadata Json
+  timestamp DateTime [default: `now()`, not null]
+}
+
+Table policies {
+  id String [pk]
+  name String [not null]
+  description String
+  template_id String [not null]
+  parent_policy policies
+  parent_id String
+  child_policies policies [not null]
+  rules Json [not null]
+  priority Int [not null]
+  tenant_id String
+  status PolicyStatus [not null, default: 'ACTIVE']
+  created_at DateTime [default: `now()`, not null]
+  last_updated_at DateTime [not null]
+
+  indexes {
+    (tenant_id, name) [unique]
+  }
+}
+
+Table group_templates {
+  id String [pk]
+  name String [unique, not null]
+  description String
+  attributes Json [not null]
+  groups groups [not null]
+  created_at DateTime [default: `now()`, not null]
+  last_updated_at DateTime [not null]
+}
+
+Table groups {
+  id String [pk]
+  name String [not null]
+  description String
+  template group_templates [not null]
+  template_id String [not null]
+  parent groups
+  parent_id String
+  children groups [not null]
+  user_groups user_groups [not null]
+  policies group_policies [not null]
+  created_at DateTime [default: `now()`, not null]
+  last_updated_at DateTime [not null]
+}
+
+Table user_groups {
+  id String [pk]
+  name String [not null]
+  description String
+  group groups [not null]
+  group_id String [not null]
+  users user_group_members [not null]
+  policies group_policies [not null]
+  created_at DateTime [default: `now()`, not null]
+  last_updated_at DateTime [not null]
+}
+
+Table user_group_members {
+  id String [pk]
+  user_group user_groups [not null]
+  user_group_id String [not null]
+  user users [not null]
+  user_id String [unique, not null]
+  created_at DateTime [default: `now()`, not null]
+
+  indexes {
+    (user_group_id, user_id) [unique]
+  }
+}
+
+Table group_policies {
+  id String [pk]
+  name String [not null]
+  description String
+  configuration Json [not null]
+  priority Int [not null]
+  group groups
+  group_id String
+  user_group user_groups
+  user_group_id String
+  created_at DateTime [default: `now()`, not null]
+  last_updated_at DateTime [not null]
+}
+
+Table tenant_usage_metrics {
+  id String [pk]
+  user_id String [not null]
+  resource_code String [not null]
+  module_code String
+  feature_code String
+  value Float [not null]
+  context Json
+  timestamp DateTime [default: `now()`, not null]
+}
+
+Table MessageType {
+  id String [pk]
+  name MessageSource [unique, not null]
+  sources sources [not null]
+}
+
+Table sources {
+  id String [pk]
+  type_id String [not null]
+  type MessageType [not null]
+  messages messages [not null]
+}
+
+Table messages {
+  id String [pk]
+  ms_message_id String [unique, not null]
+  subject String
+  sender_name String
+  sender_email String [not null]
+  received_date_time DateTime
+  sent_date_time DateTime
+  body String [not null]
+  body_preview String
+  recipients Json
+  cc_recipients Json
+  bcc_recipients Json
+  reply_to Json
+  has_attachments Boolean [not null, default: false]
+  summary Json
+  meta_data Json [not null]
+  source_id String [not null]
+  source sources [not null]
+  folder folder_messages [not null]
+  user_id String [not null]
+  folder_key String [not null]
+  created_at DateTime [default: `now()`, not null]
+  last_updated_at DateTime [not null]
+}
+
+Table attachments {
+  id String [pk]
+  receiver_emails String[] [not null]
+  sender_emails String[] [not null]
+  ms_message_id String[] [not null]
+  document documents [not null]
+  content Bytes [not null]
+  document_url String [unique, not null]
+  content_hash String [unique, not null]
+  normalized_content String [not null]
+  content_full String [not null]
+  document_id String [unique, not null]
+
+  indexes {
+    (document_id, document_url, content_hash, normalized_content, content, content_full) [unique]
+  }
+}
+
+Table documents {
+  id String [pk]
+  name String [not null]
+  is_attachment Boolean [not null, default: false]
+  attachment attachments [not null]
+  filename String [not null]
+  file_extension String [not null]
+  mime_type String [not null]
+  charset String
+  size BigInt [not null]
+  url String [not null]
+  content Bytes [not null]
+  content_full String [not null]
+  summary String
+  keywords String[] [not null]
+  normalized_content String [unique, not null]
+  content_hash String [unique, not null]
+  thumbnail Bytes
+  thumbnail_type String
+  preview_text String
+  page_count Int
+  is_confidential Boolean [default: false]
+  classification DocumentClassification
+  uploaded_by users [not null]
+  uploaded_by_id String [not null]
+  uploaded_by_email String [not null]
+  uploaded_by_first_name String [not null]
+  uploaded_by_last_name String [not null]
+  uploaded_date DateTime [default: `now()`, not null]
+  shared_with users [not null]
+  view_count Int [not null, default: 0]
+  download_count Int [not null, default: 0]
+  last_viewed DateTime
+  last_edited DateTime
+
+  indexes {
+    (id, url, content_hash, normalized_content, content, content_full) [unique]
+  }
+}
+
+Table folders {
+  id String [pk]
+  name String [not null]
+  description String
+  color String
+  icon String
+  key String [unique, not null]
+  meta_data Json
+  default Boolean [not null, default: false]
+  type FolderType [not null, default: 'INCOMING_FOLDER']
+  user users [not null]
+  user_id String [not null]
+
+  indexes {
+    (id, key) [unique]
+    (user_id, key) [unique]
+  }
+}
+
+Table folder_messages {
+  id String [pk]
+  user_id String [not null]
+  folder_key String [unique, not null]
+  messages messages [not null]
+
+  indexes {
+    (folder_key, user_id) [unique]
+  }
+}
+
+Table Thread {
+  id String [pk]
+  thread_messages thread_messages [not null]
+  participants thread_participants [not null]
+  thread_context thread_context [not null]
+  thread_context_id String [unique, not null]
+  context_hash String [unique, not null]
+  thread_summary thread_summary [not null]
+  thread_summary_id String [not null]
+  conversation_id String [not null]
+  domain String [not null]
+  message_db_ids String[] [not null]
+  ms_message_id String[] [not null]
+  summary Json
+  created_at DateTime [default: `now()`, not null]
+  last_updated_at DateTime [not null]
+}
+
+Table thread_messages {
+  id String [pk]
+  conversation_id String [not null]
+  domain String [not null]
+  message_db_id String [not null]
+  message_id String [unique, not null]
+  parent_db_id String
+  parent_id String
+  child_db_id String
+  child_id String
+  is_root Boolean [not null, default: false]
+  created_at DateTime [default: `now()`, not null]
+  last_updated_at DateTime [not null]
+  thread Thread [not null]
+  thread_id String [not null]
+}
+
+Table thread_summary {
+  id String [pk]
+  conversation_id String [not null]
+  domain String [not null]
+  message_db_ids String[] [not null]
+  ms_message_id String[] [not null]
+  summary Json
+  created_at DateTime [default: `now()`, not null]
+  last_updated_at DateTime [not null]
+  threads Thread [not null]
+}
+
+Table thread_participants {
+  id String [pk]
+  name String [not null]
+  domain String [not null]
+  email String [unique, not null]
+  threads Thread [not null]
+  is_internal_user Boolean [default: false]
+}
+
+Table thread_context {
+  id String [pk]
+  context_hash String [unique, not null]
+  context_history thread_context_history [not null]
+  context String [not null]
+  created_at DateTime [default: `now()`, not null]
+  last_updated_at DateTime [not null]
+  thread Thread [not null]
+
+  indexes {
+    (id, context_hash) [unique]
+  }
+}
+
+Table thread_context_history {
+  id String [pk]
+  context String [not null]
+  created_at DateTime [default: `now()`, not null]
+  last_updated_at DateTime [not null]
+  thread_context thread_context [not null]
+  thread_context_id String [not null]
+  context_items thread_context_items [not null]
+}
+
+Table thread_context_items {
+  id String [pk]
+  context String [not null]
+  organization String [not null]
+  contact String [not null]
+  position String [not null]
+  submission String [not null]
+  thread_context_history thread_context_history
+  thread_context_history_id String
+}
+
+Table conversations {
+  id String [pk]
+  domain String [unique, not null]
+  threads Json[] [not null]
+  created_at DateTime [default: `now()`, not null]
+  last_updated_at DateTime [not null]
+  conversation_topic ConversationTopic [not null]
+}
+
+Table email_action_history {
+  id String [pk]
+  action_taken_by String [not null]
+  action String [not null]
+  action_description String [not null]
+  date DateTime [not null]
+  time DateTime [not null]
+  requires_follow_up Boolean [not null, default: false]
+  metadata Json
+  next_action_id String [unique]
+  next_action email_action_history
+  previous_action email_action_history
+  thread_id String
+  message_id String
+}
+
+Table leads {
+  id String [pk]
+  company_id String
+  company_name String
+  company_website String
+  company companies
+  version Float [not null, default: 1]
+  person_name String
+  linkedin String
+  email String [unique, not null]
+  phone String
+  status String
+  job_title String
+  company_size String
+  revenue String
+  industry String
+  lead_status String
+  created_by String
+  created_at DateTime [default: `now()`, not null]
+  last_updated_by String
+  last_updated_at DateTime [not null]
+  is_deleted Boolean [not null, default: false]
+  deleted_at DateTime
+  deleted_by String
+  email_sent Boolean [not null, default: false]
+  email_opened Boolean [not null, default: false]
+  is_pending Boolean [not null, default: false]
+  is_processed Boolean [not null, default: false]
+  has_organization Boolean [not null, default: false]
+  has_positions Boolean [not null, default: false]
+  retry_count Int [not null, default: 0]
+  is_stuck Boolean [not null, default: false]
+}
+
+Table oppurtunities {
+  id String [pk]
+}
+
+Table deals {
+  id String [pk]
+}
+
+Table agreements {
+  id String [pk]
+}
+
+Table companies {
+  id String [pk]
+  name String [not null]
+  website String [not null]
+  domain String [unique, not null]
+  size String
+  revenue String
+  industry String
+  contacts contacts [not null]
+  positions positions [not null]
+  created_by String
+  created_at DateTime [default: `now()`, not null]
+  last_updated_by String
+  last_updated_at DateTime [not null]
+  Lead leads [not null]
+  status_rel company_status_multi_select [not null]
+  status String [not null]
+  is_deleted Boolean [not null, default: false]
+  deleted_at DateTime
+  deleted_by String
+  organization_id String
+  careers_page String
+  linkedin_url String
+  raw_body Json
+  research_analyst String
+  recruiter_assignee_id String
+
+  indexes {
+    (id, is_deleted, name, status) [unique]
+    (id, name) [unique]
+  }
+}
+
+Table company_status_multi_select {
+  id String [pk]
+  field_display_name String [not null, default: 'company_status']
+  color String
+  color_hex String [not null]
+  key String [unique, not null]
+  value String [unique, not null]
+  created_by String [not null, default: 'system']
+  created_at DateTime [default: `now()`, not null]
+  Company companies [not null]
+}
+
+Table contacts {
+  id String [pk]
+  name String [not null]
+  email String
+  phone String
+  job_title String [not null]
+  linkedin String
+  company companies [not null]
+  company_id String [not null]
+  created_by String
+  created_at DateTime [default: `now()`, not null]
+  last_updated_by String
+  last_updated_at DateTime [not null]
+  is_deleted Boolean [not null, default: false]
+  deleted_at DateTime
+  deleted_by String
+  apollo_id String [unique]
+  first_name String
+  last_name String
+  full_name String
+  linkedin_url String
+  title String
+  email_status String
+  photo_url String
+  organization_id String
+  location_id String
+  departments String[] [not null]
+  subdepartments String[] [not null]
+  seniority String
+  functions String[] [not null]
+  raw_body String [not null]
+
+  indexes {
+    (id, full_name) [unique]
+  }
+}
+
+Table positions {
+  id String [pk]
+  title String [not null]
+  description String [not null]
+  is_active Boolean [not null, default: true]
+  company companies [not null]
+  company_id String [not null]
+  company_name String [not null]
+  is_company_deleted Boolean [not null]
+  company_status String [not null]
+  submissions candidate_submissions [not null]
+  location_city String [not null]
+  location_state String [not null]
+  location_country String [not null]
+  location_zip String [not null]
+  jd_attachment String [not null]
+  jd_description String [not null]
+  jd_link String [not null]
+  booleanStrings boolean_strings [not null]
+  recruiter_bdm_id String
+  recruiter_assignee_id String
+  apollo_id String [unique]
+  relevant_keywords keywords [not null]
+  salary_range String
+  created_by String
+  created_at DateTime [default: `now()`, not null]
+  last_updated_by String
+  last_updated_at DateTime [not null]
+  is_deleted Boolean [not null, default: false]
+  deleted_at DateTime
+  deleted_by String
+
+  indexes {
+    (id, title) [unique]
+    (id, company_id, is_deleted, is_company_deleted, company_name) [unique]
+  }
+}
+
+Table interview_attendees {
+  id String [pk]
+  account_manager users [not null]
+  account_manager_id String [not null]
+  account_manager_first_name String [not null]
+  account_manager_last_name String [not null]
+  recruiter users
+  recruiter_id String [not null]
+  recruiter_first_name String
+  recruiter_last_name String
+  other_internal_attendees users [not null]
+  other_external_attendees String[] [not null]
+  interviews interviews [not null]
+
+  indexes {
+    (recruiter_id, recruiter_first_name, recruiter_last_name) [unique]
+    (account_manager_id, account_manager_first_name, account_manager_last_name) [unique]
+  }
+}
+
+Table interviews {
+  id String [pk]
+  host_user_id String [not null]
+  host_user_email String [not null]
+  start_time DateTime [not null]
+  end_time DateTime [not null]
+  attendees interview_attendees [not null]
+  attendees_id String [unique, not null]
+  outlook_calendar_event Json [not null]
+  interview_subject String [not null]
+  feedback_rel interview_feedbacks [not null]
+  feedback String [not null]
+  submission candidate_submissions [not null]
+  candidate_id String [not null]
+  submission_id String [not null]
+  position_id String [not null]
+  timezone timezones [not null]
+  timezone_key String [not null]
+  interview_mode_rel interview_modes [not null]
+  interview_mode String [not null]
+  created_by String [default: 'system']
+  created_at DateTime [default: `now()`, not null]
+  last_updated_by String
+  last_updated_at DateTime [not null]
+  is_deleted Boolean [not null, default: false]
+  deleted_at DateTime
+  deleted_by String
+}
+
+Table timezones {
+  id String [pk]
+  type SelectFieldType [not null, default: 'SINGLE_SELECT']
+  field_display_name String [not null, default: 'company_status']
+  color String
+  color_hex String [not null]
+  key String [unique, not null]
+  value String [unique, not null]
+  created_by String [not null, default: 'system']
+  created_at DateTime [default: `now()`, not null]
+  Interview interviews [not null]
+}
+
+Table interview_feedbacks {
+  id String [pk]
+  type SelectFieldType [not null, default: 'SINGLE_SELECT']
+  field_display_name String [not null, default: 'company_status']
+  color String
+  color_hex String [not null]
+  value String [unique, not null]
+  created_by String [not null, default: 'system']
+  created_at DateTime [default: `now()`, not null]
+  Interview interviews [not null]
+}
+
+Table interview_modes {
+  id String [pk]
+  type SelectFieldType [not null, default: 'SINGLE_SELECT']
+  field_display_name String [not null, default: 'company_status']
+  color String
+  color_hex String [not null]
+  value String [unique, not null]
+  created_by String [not null, default: 'system']
+  created_at DateTime [default: `now()`, not null]
+  Interview interviews [not null]
+}
+
+Table attributes {
+  id String [pk]
+  name String [not null]
+  type String [not null]
+  description String
+  tenant_id String [not null]
+  user_id String [not null]
+  version Float [not null, default: 1]
+  created_by String
+  created_at DateTime [default: `now()`, not null]
+  last_updated_by String
+  last_updated_at DateTime [not null]
+  is_deleted Boolean [not null, default: false]
+  deleted_at DateTime
+  deleted_by String
+  user_attributes user_attributes [not null]
+}
+
+Table user_attributes {
+  id String [pk]
+  tenant_id String [not null]
+  user_id String [not null]
+  attribute_id String [not null]
+  version Float [not null, default: 1]
+  value String
+  created_by String
+  created_at DateTime [default: `now()`, not null]
+  last_updated_by String
+  last_updated_at DateTime [not null]
+  is_deleted Boolean [not null, default: false]
+  deleted_at DateTime
+  deleted_by String
+  attribute attributes [not null]
+
+  indexes {
+    (user_id, attribute_id) [unique]
+  }
+}
+
+Table notes {
+  id String [pk]
+  table_id String [not null]
+  field_id String [not null]
+  note String [not null]
+  is_private Boolean [not null, default: false]
+  created_by String [not null]
+  created_at DateTime [default: `now()`, not null]
+  last_updated_by String
+  last_updated_at DateTime
+}
+
+Table candidate_submissions {
+  id String [pk]
+  status_rel candidate_submission_status [not null]
+  status String [not null]
+  submitted_at DateTime [default: `now()`, not null]
+  submitted_by String [not null]
+  last_updated_by String
+  last_updated_at DateTime [not null]
+  deleted_at DateTime
+  deleted_by String
+  candidate candidates [not null]
+  candidate_full_name String [not null]
+  candidate_id String [not null]
+  position positions [not null]
+  company_id String [not null]
+  position_id String [not null]
+  is_position_deleted Boolean [not null]
+  position_deleted_at DateTime [not null]
+  is_company_deleted Boolean [not null]
+  company_name String [not null]
+  interviews interviews [not null]
+
+  indexes {
+    (candidate_id, position_id) [unique]
+    (id, candidate_id, position_id) [unique]
+    (id, candidate_id, position_id, candidate_full_name) [unique]
+  }
+}
+
+Table candidate_submission_status {
+  id String [pk]
+  field_display_name String [not null, default: 'company_status']
+  color String
+  color_hex String [not null]
+  value String [unique, not null]
+  created_by String [not null, default: 'system']
+  created_at DateTime [default: `now()`, not null]
+  CandidateSubmission candidate_submissions [not null]
+}
+
+Table boolean_strings {
+  id String [pk]
+  string String [not null]
+  jd String [not null]
+  upvote Int [not null, default: 0]
+  downvote Int [not null, default: 0]
+  position_id String [not null]
+  position positions [not null]
+  created_by String
+  created_at DateTime [default: `now()`, not null]
+  last_updated_by String
+  last_updated_at DateTime [not null]
+  deleted_at DateTime
+  deleted_by String
+  JobRole job_roles
+  jobRoleId String
+}
+
+Table locations {
+  id String [pk]
+  country String [not null]
+  short_code String [not null]
+  state String [not null]
+  city String [not null]
+  zip String [not null]
+  user_id String
+  candidate_locations candidates [not null]
+  version Float [not null, default: 1]
+  created_by String
+  created_at DateTime [default: `now()`, not null]
+  last_updated_by String
+  last_updated_at DateTime [not null]
+  is_deleted Boolean [not null, default: false]
+  deleted_at DateTime
+  deleted_by String
+
+  indexes {
+    (id, city, state, country, zip) [unique]
+  }
+}
+
+Table personal_information {
+  id String [pk]
+  full_name String [not null]
+  email String [not null]
+  linkedin String
+  github String
+  user_id String
+  phone String [not null]
+  address_string String [not null]
+  country_of_residence String [not null]
+  city_of_residence String [not null]
+  zip String [not null]
+  state_of_residence String [not null]
+  age String [not null]
+  is_us_citizen Boolean [not null]
+  candidate candidates
+  created_by String
+  created_at DateTime [default: `now()`, not null]
+  last_updated_by String
+  last_updated_at DateTime [not null]
+  is_deleted Boolean [not null, default: false]
+  deleted_at DateTime
+  deleted_by String
+
+  indexes {
+    (id, full_name, email) [unique]
+    (id, full_name) [unique]
+  }
+}
+
+Table candidates {
+  id String [pk]
+  is_remote Boolean
+  total_work_experience String [not null]
+  search_location String [not null]
+  resume_text String [not null]
+  url String
+  status String [not null]
+  personal_information_id String [not null]
+  source candidate_source_options [not null]
+  sourced_from String [not null]
+  location locations [not null]
+  location_id String [not null]
+  personal_information personal_information [not null]
+  candidate_full_name String [not null]
+  education education [not null]
+  work_experiences work_experiences [not null]
+  submissions candidate_submissions [not null]
+  relevant_keywords keywords [not null]
+  certifications certifications [not null]
+  licenses licenses [not null]
+  possible_job_roles possible_job_roles [not null]
+  created_by String
+  created_at DateTime [default: `now()`, not null]
+  last_updated_by String
+  last_updated_at DateTime [not null]
+  is_deleted Boolean [not null, default: false]
+  deleted_at DateTime
+  deleted_by String
+  bdm_id String
+  assignee_id String
+
+  indexes {
+    (personal_information_id, candidate_full_name) [unique]
+    (id, candidate_full_name) [unique]
+  }
+}
+
+Table candidate_source_options {
+  id String [pk]
+  field_display_name String [not null, default: 'company_status']
+  color String
+  color_hex String [not null]
+  value String [unique, not null]
+  created_by String [not null, default: 'system']
+  created_at DateTime [default: `now()`, not null]
+  Candidate candidates [not null]
+}
+
+Table education {
+  id String [pk]
+  primary String
+  secondary String
+  graduation String
+  post_graduation String
+  phd String
+  candidate_id String [not null]
+  candidate candidates [not null]
+  created_by String
+  created_at DateTime [default: `now()`, not null]
+  last_updated_by String
+  last_updated_at DateTime [not null]
+  is_deleted Boolean [not null, default: false]
+  deleted_at DateTime
+  deleted_by String
+}
+
+Table certifications {
+  id String [pk]
+  name_of_certification String [not null]
+  institution String [not null]
+  candidate_id String [not null]
+  candidate candidates [not null]
+  relevant_keywords keywords [not null]
+  created_by String
+  created_at DateTime [default: `now()`, not null]
+  last_updated_by String
+  last_updated_at DateTime [not null]
+  deleted_at DateTime
+  deleted_by String
+}
+
+Table job_roles {
+  id String [pk]
+  title_hash Bytes [unique, not null]
+  title_display String [not null]
+  title_normalized String [unique, not null]
+  role_description String [not null]
+  job_role_description_detailed String [not null]
+  relevant_keywords keywords [not null]
+  boolean_strings boolean_strings [not null]
+  experienced_candidates work_experiences [not null]
+
+  indexes {
+    (title_normalized, title_display, job_role_description_detailed) [unique]
+  }
+}
+
+Table work_experiences {
+  id String [pk]
+  title String [not null]
+  organization_name String [not null]
+  is_present Boolean [not null]
+  description String [not null]
+  start_month_year String [not null]
+  end_month_year String
+  candidate candidates [not null]
+  candidate_id String [not null]
+  created_by String
+  created_at DateTime [default: `now()`, not null]
+  last_updated_by String
+  last_updated_at DateTime [not null]
+  deleted_at DateTime
+  deleted_by String
+  JobRole job_roles
+  jobRoleId String
+}
+
+Table licenses {
+  id String [pk]
+  name String [not null]
+  candidate candidates [not null]
+  candidate_id String [not null]
+  relevant_keywords keywords [not null]
+  created_by String
+  created_at DateTime [default: `now()`, not null]
+  last_updated_by String
+  last_updated_at DateTime [not null]
+  deleted_at DateTime
+  deleted_by String
+}
+
+Table keywords {
+  id Bytes [pk]
+  term String [not null]
+  term_hash Bytes [unique, not null]
+  normalized_term String [unique, not null]
+  category TermCategory [not null]
+  term_type TermType [not null]
+  is_active Boolean [not null, default: true]
+  relevant_candidates candidates [not null]
+  relevant_certifications certifications [not null]
+  relevant_job_roles job_roles [not null]
+  relevant_positions positions [not null]
+  relevant_licences licenses [not null]
+  created_at DateTime [default: `now()`, not null]
+  created_by String [not null]
+  updated_at DateTime [not null]
+  updated_by String
+  deleted_at DateTime
+  deleted_by String
+}
+
+Table possible_job_roles {
+  id String [pk]
+  job_role String [not null]
+  user_id String
+  candidate candidates [not null]
+  candidate_id String [not null]
+  created_by String
+  created_at DateTime [default: `now()`, not null]
+  last_updated_by String
+  last_updated_at DateTime [not null]
+  deleted_at DateTime
+  deleted_by String
+}
+
+Table comments {
+  id String [pk]
+  text String [not null]
+  table_name String [unique, not null]
+  parent_id String
+  parent comments
+  replies comments [not null]
+  record_id String [not null]
+  created_by String [not null]
+  created_at DateTime [default: `now()`, not null]
+  last_updated_by String
+  last_updated_at DateTime [not null]
+  is_deleted Boolean [not null, default: false]
+  deleted_at DateTime
+  deleted_by String
+  mentions comment_mentions [not null]
+}
+
+Table comment_mentions {
+  id String [pk]
+  comment_id String [not null]
+  comment comments [not null]
+  tagged_user users [not null]
+  tagged_user_id String [not null]
+  created_at DateTime [default: `now()`, not null]
+
+  indexes {
+    (comment_id, tagged_user_id) [unique]
+  }
+}
+
+Table tasks {
+  id String [pk]
+  title String [not null]
+  details String
+  status TaskStatus [not null, default: 'PENDING']
+  priority Priority [not null, default: 'MEDIUM']
+  due_date DateTime
+  completed_at DateTime
+  parent_id String
+  parent tasks
+  subtasks tasks [not null]
+  assignee String [not null]
+  reminders reminders [not null]
+  created_by String [not null]
+  created_at DateTime [default: `now()`, not null]
+  last_updated_at DateTime [not null]
+  last_updated_by String [not null]
+  is_deleted Boolean [default: false]
+  deleted_at DateTime
+  deleted_by String [not null]
+}
+
+Table reminders {
+  id String [pk]
+  task tasks [not null]
+  task_id String [not null]
+  remind_at DateTime [not null]
+  message String
+  is_sent Boolean [not null, default: false]
+  sent_at DateTime
+  created_at DateTime [default: `now()`, not null]
+  updated_at DateTime [not null]
+}
+
+Table DocumentSharedWithUsers {
+  shared_documentsId String [ref: > documents.id]
+  shared_withId String [ref: > users.id]
+}
+
+Table ThreadToThreadParticipants {
+  participantsId String [ref: > thread_participants.id]
+  threadsId String [ref: > Thread.id]
+}
+
+Table position_to_keywords {
+  relevant_keywordsId Bytes [ref: > keywords.id]
+  relevant_positionsId String [ref: > positions.id]
+}
+
+Table candidate_to_keywords {
+  relevant_keywordsId Bytes [ref: > keywords.id]
+  relevant_candidatesId String [ref: > candidates.id]
+}
+
+Table certification_to_keywords {
+  relevant_keywordsId Bytes [ref: > keywords.id]
+  relevant_certificationsId String [ref: > certifications.id]
+}
+
+Table job_role_to_keywords {
+  relevant_keywordsId Bytes [ref: > keywords.id]
+  relevant_job_rolesId String [ref: > job_roles.id]
+}
+
+Table license_to_keywords {
+  relevant_keywordsId Bytes [ref: > keywords.id]
+  relevant_licencesId String [ref: > licenses.id]
+}
+
+Enum AuthStrategy {
+  API_KEY
+  OAUTH2
+  EMAIL_PASSWORD
+  CERTIFICATE
+  CUSTOM_TOKEN
+  JWT
+  BASIC_AUTH
+}
+
+Enum IntegrationCategory {
+  ANALYTICS
+  BILLING
+  COMMUNICATION
+  DATA_ENRICHMENT
+  AI_SERVICES
+  CUSTOM
+}
+
+Enum IntegrationName {
+  LAGO
+  OPENMETER
+  FLUENTD
+  LOKI
+  STRIPE
+  APOLLO
+  OPENAI
+  ZOOMINFO
+  MAILCOW
+  MSGRAPH
+  SENDGRID
+  AIRTABLE
+  CUSTOM
+}
+
+Enum ConfigStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
+}
+
+Enum MetricType {
+  API_CALLS
+  DATA_TRANSFER
+  STORAGE
+  PROCESSING_TIME
+  CUSTOM
+}
+
+Enum NotificationType {
+  USAGE_THRESHOLD
+  RATE_LIMIT
+  ERROR
+  STATUS_CHANGE
+  CUSTOM
+}
+
+Enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+Enum DeliveryChannel {
+  EMAIL
+  WEBHOOK
+  SYSTEM
+  CUSTOM
+}
+
+Enum ExtUsageTrackingInterval {
+  MINUTE
+  HOUR
+  DAY
+  WEEK
+  MONTH
+  QUARTER
+  YEAR
+}
+
+Enum EmailServerType {
+  SMTP
+  IMAP
+}
+
+Enum DomainStatus {
+  PENDING
+  ACTIVE
+  VERIFIED
+  SUSPENDED
+}
+
+Enum DNSRecordType {
+  A
+  AAAA
+  CNAME
+  MX
+  TXT
+  SPF
+  DKIM
+  DMARC
+}
+
+Enum SPFAllDirective {
+  PASS
+  NEUTRAL
+  SOFTFAIL
+  FAIL
+}
+
+Enum DMARCPolicy {
+  NONE
+  QUARANTINE
+  REJECT
+}
+
+Enum SMTPStatus {
+  ACTIVE
+  INACTIVE
+  PENDING_VERIFICATION
+}
+
+Enum MailType {
+  MAILCOW
+  SENDGRID
+  MICROSOFT_GRAPH_API
+}
+
+Enum MessageSource {
+  MS_GRAPH
+  MAILCOW
+  SG
+}
+
+Enum PolicyStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+Enum DocumentClassification {
+  SERVICE_AGREEMENT
+  JOB_DESCRIPTION
+  RESUME
+  CONTRACT
+  QUOTATION
+  INVOICE
+  RECEIPT
+  TAX_FORMS
+  IDENTITY_DOCUMENTS
+  WORK_PERMIT
+  VISA_DOCUMENTS
+  OFFER_LETTER
+  EMPLOYMENT_CONTRACT
+  MARKETING
+  IT
+  OTHER
+}
+
+Enum FolderType {
+  INCOMING_FOLDER
+  OUTGOING_FOLDER
+}
+
+Enum ConversationTopic {
+  INITIAL_CONTACT
+  POSITION_DESCRIPTION
+  JOB_DESCRIPTION
+  CANDIDATE_SUBMISSION
+  CANDIDATE_REVIEW
+  INTERVIEW
+  CONTRACT
+  EMPLOYMENT
+}
+
+Enum RecipientType {
+  CANDIDATE
+  INTERNAL_USER
+  CLIENT_CONTACT
+  EXTERNAL_USER
+}
+
+Enum EmailActionType {
+  REPLY
+  REQUEST_JD
+  REQUEST_RESUME
+  REQUEST_REVIEW
+  REQUEST_RESUME_REVIEW
+  REQUEST_DETAILS
+  REQUEST_FOLLOWUP
+  REQUEST_BENEFITS_DETAILS
+  REQUEST_EXPERIENCE_CERTIFICATE
+  REREQUEST_NEW_POSITION
+  FOLLOWUP
+  FORWARD
+  CHANGE_POC
+  SEND_CONTRACT
+  SCHEDULE_INTERVIEW
+  SEND_RESUME
+  SEND_OFFER_LETTER
+  SEND_JD
+  SALARY_NEGOTIATIONS
+  CONTRACT_NEGOTIATIONS
+  SUBMIT_CONTRACT_REVIEW
+  SUBMIT_RESUME_REVIEW
+}
+
+Enum EmailTypes {
+  MARKETING
+  TRANSACTIONAL
+  PROMOTIONAL
+  COLD_EMAIL_CAMPAIGN
+  FOLLOW_UP
+  AUTOMATED
+  NOTIFICATION
+}
+
+Enum EmailStatus {
+  DRAFT
+  QUEUED
+  SENT
+  FAILED
+  READ
+  UNREAD
+}
+
+Enum CreditTypeEnum {
+  API
+  EMAIL
+}
+
+Enum SelectFieldType {
+  SINGLE_SELECT
+  MULTI_SELECT
+}
+
+Enum TermCategory {
+  INDUSTRY
+  TECHNICAL_SKILL
+  SOFT_SKILL
+  ROLE_TITLE
+  RESPONSIBILITY
+  TOOL
+  CERTIFICATION
+  DOMAIN
+}
+
+Enum TermType {
+  NOUN
+  VERB
+  ADJECTIVE
+  COMPOUND
+}
+
+Enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+Enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+Ref: external_integrations.(tenant_config_id, tenant_id) > tenant_configurations.(id, tenant_id)
+
+Ref: integration_usage_metrics.integration_id > external_integrations.id
+
+Ref: custom_metric_values.usage_metric_id > integration_usage_metrics.id
+
+Ref: integration_credit_usage.integration_id > external_integrations.id
+
+Ref: email_preference.tenant_id - tenant_configurations.tenant_id
+
+Ref: integration_notifications.integration_id > external_integrations.id
+
+Ref: domains.(tenant_config_id, tenant_id) > tenant_configurations.(id, tenant_id)
+
+Ref: dns_records.domain_id > domains.id
+
+Ref: spf_records.(dns_record_id, domain_id) - dns_records.(id, domain_id)
+
+Ref: dkim_records.(dns_record_id, domain_id) - dns_records.(id, domain_id)
+
+Ref: dmarc_records.(dns_record_id, domain_id) - dns_records.(id, domain_id)
+
+Ref: email_servers.(tenant_config_id, tenant_id) > tenant_configurations.(id, tenant_id)
+
+Ref: api_keys.(tenant_config_id, tenant_id) > tenant_configurations.(id, tenant_id)
+
+Ref: users.interview_attendies_id - interview_attendees.id
+
+Ref: user_addresses.user_id - users.id
+
+Ref: user_devices.user_id > users.id
+
+Ref: user_devices.last_accessed_from_location_id - user_device_locations.id
+
+Ref: user_device_locations.(device_id, user_id) - user_devices.(id, user_id)
+
+Ref: policies.parent_id - policies.id
+
+Ref: groups.template_id > group_templates.id
+
+Ref: groups.parent_id - groups.id
+
+Ref: user_groups.group_id > groups.id
+
+Ref: user_group_members.user_group_id > user_groups.id
+
+Ref: user_group_members.user_id - users.id
+
+Ref: group_policies.group_id > groups.id
+
+Ref: group_policies.user_group_id > user_groups.id
+
+Ref: sources.type_id > MessageType.id
+
+Ref: messages.source_id > sources.id
+
+Ref: messages.(folder_key, user_id) > folder_messages.(folder_key, user_id)
+
+Ref: attachments.(document_id, document_url, content_hash, normalized_content, content, content_full) > documents.(id, url, content_hash, normalized_content, content, content_full)
+
+Ref: documents.(uploaded_by_id, uploaded_by_email, uploaded_by_first_name, uploaded_by_last_name) > users.(id, email, first_name, last_name)
+
+Ref: folders.user_id > users.id
+
+Ref: Thread.(thread_context_id, context_hash) > thread_context.(id, context_hash)
+
+Ref: Thread.thread_summary_id > thread_summary.id
+
+Ref: thread_messages.thread_id > Thread.id
+
+Ref: thread_context_history.thread_context_id > thread_context.id
+
+Ref: thread_context_items.thread_context_history_id > thread_context_history.id
+
+Ref: email_action_history.next_action_id - email_action_history.id
+
+Ref: leads.company_id > companies.id
+
+Ref: companies.status > company_status_multi_select.value
+
+Ref: contacts.company_id > companies.id
+
+Ref: positions.(company_id, is_company_deleted, company_name, company_status) > companies.(id, is_deleted, name, status)
+
+Ref: interview_attendees.(account_manager_id, account_manager_first_name, account_manager_last_name) - users.(id, first_name, last_name)
+
+Ref: interview_attendees.(recruiter_id, recruiter_first_name, recruiter_last_name) - users.(id, first_name, last_name)
+
+Ref: interviews.attendees_id > interview_attendees.id
+
+Ref: interviews.feedback > interview_feedbacks.value
+
+Ref: interviews.(submission_id, candidate_id, position_id) > candidate_submissions.(id, candidate_id, position_id)
+
+Ref: interviews.timezone_key > timezones.key
+
+Ref: interviews.interview_mode > interview_modes.value
+
+Ref: user_attributes.attribute_id > attributes.id
+
+Ref: candidate_submissions.status > candidate_submission_status.value
+
+Ref: candidate_submissions.(candidate_id, candidate_full_name) > candidates.(id, candidate_full_name)
+
+Ref: candidate_submissions.(position_id, company_id, is_position_deleted, is_company_deleted, company_name) > positions.(id, company_id, is_deleted, is_company_deleted, company_name)
+
+Ref: boolean_strings.position_id > positions.id
+
+Ref: boolean_strings.jobRoleId > job_roles.id
+
+Ref: candidates.sourced_from > candidate_source_options.value
+
+Ref: candidates.location_id > locations.id
+
+Ref: candidates.(personal_information_id, candidate_full_name) - personal_information.(id, full_name)
+
+Ref: education.candidate_id > candidates.id
+
+Ref: certifications.candidate_id > candidates.id
+
+Ref: work_experiences.candidate_id > candidates.id
+
+Ref: work_experiences.jobRoleId > job_roles.id
+
+Ref: licenses.candidate_id > candidates.id
+
+Ref: possible_job_roles.candidate_id > candidates.id
+
+Ref: comments.parent_id - comments.id
+
+Ref: comment_mentions.comment_id > comments.id
+
+Ref: comment_mentions.tagged_user_id > users.id
+
+Ref: tasks.parent_id - tasks.id
+
+Ref: reminders.task_id > tasks.id

@@ -1,0 +1,875 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+generator dbml {
+  provider = "prisma-dbml-generator"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== Core User Management ====================
+
+model User {
+  id               String          @id @default(cuid())
+  email            String          @unique
+  name             String?
+  role             UserRole        @default(USER)
+  status           UserStatus      @default(ACTIVE)
+  // Relationships
+  // auditLogs       AuditLog[]
+  // createdPolicies RestrictionPolicy[] @relation("PolicyCreator")
+  last_login_at    DateTime?
+  notifications    Notification[]
+  sales_activities SalesActivity[] @relation("SalesRepActivities")
+
+  created_at DateTime @default(now()) @map("created_at")
+  updated_at DateTime @updatedAt @map("updated_at")
+
+  @@index([role])
+  @@index([email])
+  @@index([status])
+  @@map("users")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  SALES_REP
+  ENGINEER
+  ACCOUNTS
+  MARKETING
+  USER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+// ==================== Resource, Module & Feature Management ====================
+
+model Resource {
+  id              String       @id @default(uuid())
+  name            String       @unique
+  code            String       @unique
+  description     String?
+  type            ResourceType // API, SERVICE, AI_MODEL
+  custom_resource String?
+
+  modules       Module[]
+  metrics       MetricDefinition[]
+  usage_events  UsageEvent[]
+  billing_rules BillingRule[]
+
+  // OpenMeter integration
+  openmeter_resource_id String?
+
+  created_at DateTime @default(now()) @map("created_at")
+  updated_at DateTime @updatedAt @map("updated_at")
+
+  @@index([type])
+  @@index([name])
+  @@map("resources")
+}
+
+enum ResourceType {
+  API
+  SERVICE
+  AI_MODEL
+  INTEGRATION
+  STORAGE
+  CUSTOM
+}
+
+model Module {
+  id          String  @id @default(uuid())
+  name        String
+  code        String  @unique
+  description String?
+
+  status ModuleStatus @default(ACTIVE)
+
+  resource    Resource @relation(fields: [resource_id], references: [id])
+  resource_id String   @db.Uuid
+
+  features   Feature[]
+  created_at DateTime  @default(now()) @map("created_at")
+  updated_at DateTime  @updatedAt @map("updated_at")
+
+  @@index([resource_id])
+  @@index([resource_id, code])
+  @@map("modules")
+}
+
+enum ModuleStatus {
+  ACTIVE
+  INACTIVE
+  DEPRECATED
+}
+
+model FeatureCategory {
+  id            String    @id @default(cuid())
+  name          String    @unique // e.g., "Fundamentals", "Visualizations", "Project Management"
+  display_order Int
+  description   String?
+  // Relationships
+  features      Feature[]
+
+  created_at DateTime @default(now()) @map("created_at")
+  updated_at DateTime @updatedAt @map("updated_at")
+
+  @@index([name])
+  @@map("feature_categories")
+}
+
+model Feature {
+  id String @id @default(uuid())
+
+  name         String
+  code         String @unique
+  display_name String
+  description  String
+
+  type          FeatureType
+  default_value Json? // Default Configuration
+  is_new        Boolean       @default(false)
+  status        FeatureStatus @default(ACTIVE)
+  display_order Int
+
+  metrics MetricDefinition[]
+
+  module    Module @relation(fields: [module_id], references: [id])
+  module_id String
+
+  category      FeatureCategory @relation(fields: [category_name], references: [name])
+  category_name String
+
+  created_at DateTime @default(now()) @map("created_at")
+  updated_at DateTime @updatedAt @map("updated_at")
+
+  @@index([type])
+  @@index([code])
+  @@index([is_new])
+  @@index([status])
+  @@index([category_name])
+  @@index([module_id])
+  @@map("features")
+}
+
+enum FeatureStatus {
+  ACTIVE
+  INACTIVE
+  DEPRECATED
+  BETA
+}
+
+enum FeatureType {
+  BOOLEAN
+  NUMERIC
+  TIERED
+  METERED
+}
+
+model Entity {
+  id          String     @id @default(uuid())
+  name        String
+  description String?
+  entity_type EntityType
+  entity_id   String     @unique @db.Uuid
+
+  // Consider adding status field
+  status String @default("ACTIVE")
+
+  // Add validation for hierarchy
+  parent_entity_id String?  @db.Uuid
+  parent_entity    Entity?  @relation("EntityHierarchy", fields: [parent_entity_id], references: [id])
+  child_entities   Entity[] @relation("EntityHierarchy")
+
+  enforcement_rules   EnforcementRule[]
+  openmeter_entity_id String?
+
+  // Consider adding metadata field for flexible extensibility
+  metadata Json?
+
+  created_at  DateTime      @default(now())
+  updated_at  DateTime      @updatedAt
+  UsageMetric UsageMetric[]
+
+  @@unique([entity_id, entity_type])
+  @@index([entity_id, entity_type])
+  @@index([parent_entity_id])
+  // Add compound index for hierarchy queries
+  @@index([parent_entity_id, entity_type])
+  @@map("entities")
+}
+
+enum EntityType {
+  FEATURE
+  MODULE
+  RESOURCE
+  SERVICE // For future service-mesh integration
+  INTEGRATION // For third-party integrations
+  API_ENDPOINT // For fine-grained API control
+}
+
+model EnforcementRule {
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+
+  // Add version tracking for rules
+  version Int @default(1)
+
+  // Add status field
+  status String @default("ACTIVE")
+
+  entity    Entity @relation(fields: [entity_id], references: [id])
+  entity_id String @db.Uuid
+
+  rule_type       RuleType
+  evaluation_type EvaluationType
+  operator        OperatorType
+  priority        Int            @default(0)
+
+  // Add effective dates
+  starts_at  DateTime?
+  expires_at DateTime?
+
+  propagate_to_children Boolean         @default(false)
+  conditions            RuleCondition[]
+  billable_metric_id    String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@unique([entity_id, rule_type])
+  @@index([entity_id, rule_type])
+  @@index([status, entity_id]) // Add for status-based queries
+  @@map("enforcement_rules")
+}
+
+// Track rule evaluation history
+model RuleEvaluation {
+  id         String   @id @default(uuid())
+  rule_id    String
+  entity_id  String
+  result     Boolean
+  context    Json // Store evaluation context
+  created_at DateTime @default(now())
+
+  @@index([rule_id, created_at])
+  @@index([entity_id, created_at])
+  @@map("rule_evaluations")
+}
+
+// Version control for rules
+model RuleVersion {
+  id         String   @id @default(uuid())
+  rule_id    String
+  version    Int
+  changes    Json // What changed
+  created_by String? // Who made the change
+  created_at DateTime @default(now())
+
+  @@unique([rule_id, version])
+  @@map("rule_versions")
+}
+
+// Rate limiting specific storage
+model RateLimitEntry {
+  id           String   @id @default(uuid())
+  key          String // Composite key for rate limit
+  count        Int // Current count
+  window_start DateTime // Start of current window
+  window_end   DateTime // End of current window
+  created_at   DateTime @default(now())
+
+  @@unique([key, window_start])
+  @@index([window_end]) // For cleanup
+  @@map("rate_limit_entries")
+}
+
+// Specific conditions for a rule
+model RuleCondition {
+  id      String          @id @default(uuid())
+  rule    EnforcementRule @relation(fields: [rule_id], references: [id])
+  rule_id String
+
+  // Condition definition
+  condition_type  ConditionType
+  threshold_type  ThresholdType
+  threshold_value Float
+  time_window     TimeWindow? // For rate-based conditions
+
+  // For composite conditions
+  group_operator      GroupOperator? // AND/OR for condition groups
+  group_order         Int? // Order within group
+  parent_condition_id String? // For nested conditions
+
+  // Actions when condition is met
+  actions ConditionAction[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([rule_id])
+  @@map("rule_conditions")
+}
+
+// Actions to take when conditions are met
+model ConditionAction {
+  id           String        @id @default(uuid())
+  condition    RuleCondition @relation(fields: [condition_id], references: [id])
+  condition_id String
+
+  action_type      ActionType
+  action_config    ActionConfig? @relation(fields: [action_config_id], references: [id])
+  action_config_id String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([condition_id])
+  @@map("condition_actions")
+}
+
+// Reusable action configurations
+model ActionConfig {
+  id          String           @id @default(uuid())
+  name        String
+  config_type ActionConfigType
+
+  // Notification settings
+  notification_template String?
+  notification_channels String[]
+
+  // Rate limiting settings
+  rate_limit_window TimeWindow?
+  rate_limit_value  Int?
+
+  // Quota settings
+  quota_reset_period TimeWindow?
+  quota_value        Float?
+
+  actions    ConditionAction[]
+  created_at DateTime          @default(now())
+  updated_at DateTime          @updatedAt
+
+  @@map("action_configs")
+}
+
+// Usage tracking with OpenMeter
+model UsageMetric {
+  id String @id @default(uuid())
+
+  metric_type MetricType
+  value       Float
+  time_window TimeWindow
+
+  // OpenMeter integration
+  openmeter_metric_id String
+
+  timestamp DateTime @default(now()) @db.Timestamp()
+
+  entity      Entity     @relation(fields: [entity_id, entity_type], references: [entity_id, entity_type])
+  entity_id   String     @db.Uuid
+  entity_type EntityType
+
+  @@index([entity_id, entity_type, time_window])
+  @@index([timestamp])
+  @@map("usage_metrics")
+}
+
+// Enums for structured configuration
+enum RuleType {
+  RATE_LIMIT
+  QUOTA
+  FEATURE_FLAG
+  ACCESS_CONTROL
+  USAGE_LIMIT
+  COMPOSITE
+}
+
+enum EvaluationType {
+  REAL_TIME // Evaluate on each request
+  PERIODIC // Evaluate on schedule
+  EVENT_BASED // Evaluate on specific events
+}
+
+enum OperatorType {
+  EQUALS
+  GREATER_THAN
+  LESS_THAN
+  BETWEEN
+  IN_LIST
+  NOT_IN_LIST
+  REGEX_MATCH
+}
+
+enum ConditionType {
+  USAGE_COUNT
+  USAGE_RATE
+  TIME_WINDOW
+  USER_ATTRIBUTE
+  TENANT_ATTRIBUTE
+  COMPOSITE
+}
+
+enum ThresholdType {
+  ABSOLUTE
+  PERCENTAGE
+  RATIO
+}
+
+enum TimeWindow {
+  MINUTE
+  HOUR
+  DAY
+  WEEK
+  MONTH
+  QUARTER
+  YEAR
+}
+
+enum GroupOperator {
+  AND
+  OR
+}
+
+enum ActionType {
+  BLOCK
+  NOTIFY
+  THROTTLE
+  LOG
+  UPGRADE_PROMPT
+  NOTIFY_ADMIN
+  NOTIFY_USER
+  SUSPEND_ACCESS
+  DEGRADE_SERVICE
+  UPGRADE_REQUIRED
+  CUSTOM
+}
+
+enum ActionConfigType {
+  NOTIFICATION
+  RATE_LIMIT
+  QUOTA
+  CUSTOM
+}
+
+// ==================== Subscription Plans Management ====================
+
+model SubscriptionPlan {
+  id                   String               @id @default(uuid())
+  name                 String               @unique
+  description          String?
+  type                 PlanType
+  interval             BillingInterval
+  price                Decimal
+  features             Json // Enabled features
+  quotas               Json // Plan-specific quotas
+  trial_days           Int                  @default(90)
+  billing_rules        BillingRule[]
+  tenant_subscriptions TenantSubscription[]
+  created_at           DateTime             @default(now()) @map("created_at")
+  updated_at           DateTime             @updatedAt @map("updated_at")
+
+  @@index([type])
+  @@index([interval])
+  @@index([name])
+  @@map("subscription_plans")
+}
+
+enum PlanType {
+  FREE
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+  CUSTOM
+}
+
+enum BillingInterval {
+  MONTHLY
+  QUATERLY
+  YEARLY
+  CUSTOM
+}
+
+model BillingRule {
+  id   String @id @default(uuid())
+  name String
+
+  plan    SubscriptionPlan @relation(fields: [plan_id], references: [id])
+  plan_id String
+
+  metric_definition MetricDefinition @relation(fields: [metric_id], references: [id])
+  metric_id         String
+
+  pricing_model PricingModel
+  pricing_tiers Json // Pricing tiers configuration
+
+  resource    Resource @relation(fields: [resource_id], references: [id])
+  resource_id String
+
+  created_at DateTime @default(now()) @map("created_at")
+  updated_at DateTime @updatedAt @map("updated_at")
+
+  @@index([plan_id])
+  @@index([resource_id])
+  @@index([metric_id])
+  @@index([plan_id, resource_id, metric_id])
+  @@map("billing_rules")
+}
+
+enum PricingModel {
+  FLAT_RATE
+  PER_UNIT
+  TIERED
+  VOLUME
+  PACKAGE
+  CUSTOM
+}
+
+// ==================== Billable Metrics Management ====================
+
+model MetricDefinition {
+  id   String     @id @default(uuid())
+  name String
+  type MetricType
+
+  resource    Resource @relation(fields: [resource_id], references: [id])
+  resource_id String
+
+  feature    Feature? @relation(fields: [feature_id], references: [id])
+  feature_id String?
+
+  aggregation   AggregationType
+  unit          String?
+  billing_rules BillingRule[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([type])
+  @@index([resource_id])
+  @@index([feature_id])
+  @@index([resource_id, feature_id])
+  @@index([resource_id, feature_id, type])
+  @@map("metric_definitions")
+}
+
+enum MetricType {
+  COUNT
+  GAUGE
+  HISTOGRAM
+  DURATION
+  AI_TOKENS
+  API_CALLS
+  STORAGE_SIZE
+  REQUEST_COUNT
+  ERROR_COUNT
+  DATA_VOLUME
+  UNIQUE_USERS
+  ACTIVE_USERS
+  CONCURRENT_USERS
+  BANDWIDTH_USAGE
+  CPU_UTILIZATION
+  MEMORY_USAGE
+  CUSTOM
+}
+
+enum AggregationType {
+  SUM
+  AVG
+  MAX
+  MIN
+  PERCENTILE
+  UNIQUE_COUNT
+  COUNT
+}
+
+model UsageEvent {
+  id String @id @default(uuid())
+
+  resource    Resource @relation(fields: [resource_id], references: [id])
+  resource_id String
+
+  tenant    Tenant @relation(fields: [tenant_id], references: [id])
+  tenant_id String
+
+  metric_name String
+  value       Float
+
+  timestamp DateTime @default(now())
+  metadata  Json? // Additional context
+
+  @@index([timestamp])
+  @@index([tenant_id])
+  @@index([resource_id])
+  @@index([timestamp, tenant_id])
+  @@index([timestamp, tenant_id, resource_id])
+  @@map("usage_events")
+}
+
+// ==================== Billing & Payments ====================
+
+model Invoice {
+  id       String        @id @default(cuid())
+  amount   Decimal
+  currency String        @default("USD")
+  status   InvoiceStatus
+  due_date DateTime
+  paid_at  DateTime?
+
+  // Relationships
+  subscription      TenantSubscription @relation(fields: [subscription_id, tenant_id], references: [id, tenant_id])
+  subscription_id   String             @db.Uuid
+  tenant_id         String             @db.Uuid
+  payments          Payment[]
+  stripe_invoice_id String?            @unique
+
+  created_at DateTime @default(now()) @map("created_at")
+  updated_at DateTime @updatedAt @map("updated_at")
+
+  @@unique([id, subscription_id, tenant_id])
+  @@index([id, subscription_id, tenant_id])
+  @@index([tenant_id])
+  @@index([stripe_invoice_id])
+  @@index([status, tenant_id])
+  @@index([status, stripe_invoice_id])
+  @@index([status])
+  @@map("invoices")
+}
+
+model Payment {
+  id       String @id @default(cuid())
+  amount   Float  @db.DoublePrecision
+  currency String @default("USD")
+
+  status         PaymentStatus
+  payment_method PaymentMethod
+
+  // Relationships
+  invoice           Invoice @relation(fields: [invoice_id, subscription_id, tenant_id], references: [id, subscription_id, tenant_id])
+  invoice_id        String  @unique @db.Uuid
+  tenant_id         String  @db.Uuid
+  subscription_id   String  @db.Uuid
+  stripe_payment_id String? @unique
+
+  created_at DateTime @default(now()) @map("created_at")
+  updated_at DateTime @updatedAt @map("updated_at")
+
+  @@index([invoice_id])
+  @@index([tenant_id])
+  @@index([subscription_id])
+  @@index([stripe_payment_id])
+  @@index([status])
+  @@index([payment_method])
+  @@index([status, invoice_id])
+  @@index([status, tenant_id])
+  @@index([status, subscription_id])
+  @@index([status, stripe_payment_id])
+  @@index([payment_method, invoice_id])
+  @@index([payment_method, tenant_id])
+  @@index([payment_method, subscription_id])
+  @@index([payment_method, stripe_payment_id])
+  @@map("payments")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  VOID
+  PAST_DUE
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  BANK_TRANSFER
+  WIRE
+  OTHER
+}
+
+// ==================== Tenant Management =====================
+
+model Tenant {
+  id                String              @id @default(uuid())
+  name              String
+  domain_name       String              @unique
+  // status            SubscriptionStatus
+  subscription_plan TenantSubscription?
+  custom_quotas     Json? // Override default plan quotas
+  billing_settings  Json // Billing configuration
+  usage_events      UsageEvent[]
+
+  is_active        Boolean?
+  group_policy_id  String?
+  team_size        String?
+  industry         String?
+  recruitment_type String?
+  location         String?
+
+  // configurations TenantConfiguration[]
+  timezone      String? // add to user as well.
+  trial_ends_at DateTime?
+
+  created_by String?   @map("created_by")
+  created_at DateTime  @default(now()) @map("created_at")
+  updated_at DateTime  @updatedAt @map("updated_at")
+  deleted_at DateTime? @map("deleted_at")
+
+  @@index([deleted_at])
+  @@map("tenants")
+}
+
+model TenantSubscription {
+  id                   String             @id @default(cuid())
+  status               SubscriptionStatus
+  start_date           DateTime
+  end_date             DateTime?
+  trial_end_date       DateTime?
+  canceled_at          DateTime?
+  current_period_start DateTime
+  current_period_end   DateTime
+  // Relationships
+  plan_id              String             @unique @db.Uuid
+  tenant_id            String             @unique @db.Uuid
+  tenant               Tenant             @relation(fields: [tenant_id], references: [id])
+  plan                 SubscriptionPlan   @relation(fields: [plan_id], references: [id])
+  invoices             Invoice[]
+
+  created_at DateTime @default(now()) @map("created_at")
+  updated_at DateTime @updatedAt @map("updated_at")
+
+  @@unique([id, tenant_id])
+  @@index([tenant_id])
+  @@index([plan_id, tenant_id])
+  @@index([plan_id, tenant_id, start_date])
+  @@index([plan_id, tenant_id, end_date])
+  @@index([plan_id, tenant_id, trial_end_date])
+  @@map("tenant_subscriptions")
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  TRIAL
+  EXPIRED
+}
+
+// ==================== Marketing & Communication ====================
+
+model Announcement {
+  id            String             @id @default(cuid())
+  title         String
+  content       String
+  type          AnnouncementType
+  status        AnnouncementStatus @default(DRAFT)
+  publish_at    DateTime?
+  expires_at    DateTime?
+  created_at    DateTime           @default(now()) @map("created_at")
+  updated_at    DateTime           @updatedAt @map("updated_at")
+  // Relationships
+  notifications Notification[]
+
+  @@index([type])
+  @@index([status])
+  @@map("announcements")
+}
+
+model Notification {
+  id              String             @id @default(cuid())
+  title           String
+  content         String
+  type            NotificationType
+  status          NotificationStatus @default(UNREAD)
+  created_at      DateTime           @default(now()) @map("created_at")
+  updated_at      DateTime           @updatedAt @map("updated_at")
+  // Relationships
+  user            User               @relation(fields: [user_id], references: [id])
+  user_id         String             @db.Uuid
+  announcement    Announcement?      @relation(fields: [announcement_id], references: [id])
+  announcement_id String?            @db.Uuid
+
+  @@index([type])
+  @@index([status])
+  @@index([user_id])
+  @@index([announcement_id])
+  @@map("notifications")
+}
+
+enum AnnouncementType {
+  FEATURE_UPDATE
+  MAINTENANCE
+  PROMOTION
+  GENERAL
+}
+
+enum AnnouncementStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum NotificationType {
+  ANNOUNCEMENT
+  SYSTEM
+  BILLING
+  SECURITY
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+  ARCHIVED
+}
+
+// ==================== Sales & Activity Tracking ====================
+
+model SalesActivity {
+  id           String       @id @default(cuid())
+  tenant_id    String?      @db.Uuid
+  type         ActivityType
+  description  String
+  outcome      String?
+  scheduled_at DateTime?
+  completed_at DateTime?
+  created_at   DateTime     @default(now()) @map("created_at")
+  updated_at   DateTime     @updatedAt @map("updated_at")
+  // Relationships
+  sales_rep    User         @relation("SalesRepActivities", fields: [sales_rep_id], references: [id])
+  sales_rep_id String
+
+  @@index([tenant_id])
+  @@index([type])
+  @@index([sales_rep_id])
+  @@map("sales_activities")
+}
+
+enum ActivityType {
+  CALL
+  EMAIL
+  MEETING
+  DEMO
+  FOLLOW_UP
+}
